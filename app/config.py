@@ -14,7 +14,10 @@ class Settings(BaseSettings):
     output_path: str = ""
 
     # Notification settings
-    notification_method: str = "none"  # "line", "slack", "pushover", "none"
+    notification_method: str = "none"  # "google_chat", "line", "slack", "pushover", "none"
+
+    # Google Chat
+    google_chat_webhook_url: str = ""
 
     # LINE Notify
     line_notify_token: str = ""

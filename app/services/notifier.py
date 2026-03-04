@@ -6,7 +6,9 @@ from app.config import settings
 async def send_notification(title: str, message: str) -> bool:
     """Send a notification using the configured method."""
     method = settings.notification_method.lower()
-    if method == "line":
+    if method == "google_chat":
+        return await _send_google_chat(title, message)
+    elif method == "line":
         return await _send_line(title, message)
     elif method == "slack":
         return await _send_slack(title, message)
@@ -16,6 +18,18 @@ async def send_notification(title: str, message: str) -> bool:
         return True
     else:
         raise ValueError(f"Unknown notification method: {method}")
+
+
+async def _send_google_chat(title: str, message: str) -> bool:
+    """Send notification via Google Chat Incoming Webhook."""
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            settings.google_chat_webhook_url,
+            json={
+                "text": f"*{title}*\n{message}",
+            },
+        )
+        return resp.status_code == 200
 
 
 async def _send_line(title: str, message: str) -> bool:

@@ -11,17 +11,17 @@ FastAPI サーバー
     ↓ Obsidian Vault 読み取り
 Daily Note 生成 + 保存
     ↓
-通知 (LINE / Slack / Pushover)
+通知 (Google Chat / LINE / Slack / Pushover)
     ↓
-iPhone に通知到着
+Google Chat / iPhone に通知到着
 ```
 
 ## 機能
 
 - **タスク送信**: iPhoneからテキスト入力 or ファイルアップロードでタスクを送信
-- **Obsidian連携**: 既存のObsidian Daily Noteの内容をマージ
-- **Daily Note生成**: タスクとObsidianのメモを統合したMarkdownノートを生成
-- **通知**: LINE Notify / Slack / Pushover でiPhoneに通知
+- **Obsidian連携**: 既存のObsidian Daily Noteにタスクを追記（上書きしない）
+- **Daily Note生成**: 既存ノートがなければテンプレートから新規作成
+- **通知**: Google Chat / LINE / Slack / Pushover で通知
 - **API認証**: Bearerトークンによるセキュアなアクセス
 
 ## セットアップ
@@ -45,7 +45,8 @@ cp .env.example .env
 |------|------|
 | `DN_OBSIDIAN_VAULT_PATH` | Obsidian Vaultのパス |
 | `DN_API_TOKEN` | API認証トークン |
-| `DN_NOTIFICATION_METHOD` | 通知方法 (`line`, `slack`, `pushover`, `none`) |
+| `DN_NOTIFICATION_METHOD` | 通知方法 (`google_chat`, `line`, `slack`, `pushover`, `none`) |
+| `DN_GOOGLE_CHAT_WEBHOOK_URL` | Google Chat Webhook URL |
 
 ### 3. 起動
 

@@ -1,5 +1,4 @@
 import os
-import tempfile
 from datetime import date
 from unittest.mock import patch, AsyncMock
 
@@ -23,7 +22,6 @@ def setup_env(tmp_path):
     }
 
     with patch.dict(os.environ, env_vars):
-        # Re-import to pick up new env vars
         import importlib
         import app.config
         importlib.reload(app.config)
@@ -79,7 +77,6 @@ def test_create_daily_note(client, auth_headers, setup_env):
     assert "タスク2" in data["content"]
     assert data["notification_sent"] is True
 
-    # Verify file was created
     saved = setup_env["daily_notes_path"] / "2025-01-15.md"
     assert saved.exists()
 
@@ -111,7 +108,6 @@ def test_upload_memo_file(client, auth_headers, setup_env):
 
 
 def test_get_existing_note(client, auth_headers, setup_env):
-    # Create a note file first
     note_file = setup_env["daily_notes_path"] / "2025-03-01.md"
     note_file.write_text("# Existing Note\nSome content", encoding="utf-8")
 
@@ -153,11 +149,11 @@ def test_invalid_date_format(client, auth_headers):
     assert resp.status_code == 400
 
 
-def test_merge_with_existing_obsidian_note(client, auth_headers, setup_env):
-    # Create an existing Obsidian note
+def test_append_to_existing_obsidian_note(client, auth_headers, setup_env):
+    """Existing Obsidian daily note should be preserved with tasks appended."""
     existing = setup_env["daily_notes_path"] / "2025-04-01.md"
     existing.write_text(
-        "# 2025-04-01\n## Meeting Notes\n- 10:00 Team sync\n## Ideas\n- New feature proposal",
+        "# 2025-04-01\n\n## Meeting Notes\n- 10:00 Team sync\n\n## Ideas\n- New feature proposal\n",
         encoding="utf-8",
     )
 
@@ -171,7 +167,100 @@ def test_merge_with_existing_obsidian_note(client, auth_headers, setup_env):
     )
     assert resp.status_code == 200
     data = resp.json()
-    # Should contain both new tasks and existing content
-    assert "新しいタスク" in data["content"]
-    assert "Meeting Notes" in data["content"]
-    assert "Team sync" in data["content"]
+    content = data["content"]
+    # Original content preserved
+    assert "Meeting Notes" in content
+    assert "Team sync" in content
+    assert "Ideas" in content
+    assert "New feature proposal" in content
+    # New task appended
+    assert "- [ ] 新しいタスク" in content
+
+
+def test_append_to_existing_note_with_tasks_section(client, auth_headers, setup_env):
+    """Tasks should be inserted into existing Tasks section."""
+    existing = setup_env["daily_notes_path"] / "2025-05-01.md"
+    existing.write_text(
+        "# 2025-05-01\n\n## Tasks\n- [ ] 既存タスクA\n- [x] 完了済みB\n\n## Notes\nSome notes here\n",
+        encoding="utf-8",
+    )
+
+    resp = client.post(
+        "/api/daily-note",
+        json={
+            "tasks": ["追加タスクC", "追加タスクD"],
+            "date": "2025-05-01",
+        },
+        headers=auth_headers,
+    )
+    assert resp.status_code == 200
+    content = resp.json()["content"]
+    # Original tasks preserved
+    assert "既存タスクA" in content
+    assert "完了済みB" in content
+    # New tasks added
+    assert "- [ ] 追加タスクC" in content
+    assert "- [ ] 追加タスクD" in content
+    # Other sections preserved
+    assert "## Notes" in content
+    assert "Some notes here" in content
+
+
+def test_append_memo_to_existing_note(client, auth_headers, setup_env):
+    """Memo should be appended as a separate section."""
+    existing = setup_env["daily_notes_path"] / "2025-06-01.md"
+    existing.write_text("# 2025-06-01\n\n## Tasks\n- [ ] 既存タスク\n", encoding="utf-8")
+
+    resp = client.post(
+        "/api/daily-note",
+        json={
+            "tasks": [],
+            "memo": "iPhoneから送ったメモ",
+            "date": "2025-06-01",
+        },
+        headers=auth_headers,
+    )
+    assert resp.status_code == 200
+    content = resp.json()["content"]
+    assert "既存タスク" in content
+    assert "iPhoneから送ったメモ" in content
+
+
+def test_google_chat_notification():
+    """Google Chat webhook should send correct payload."""
+    import httpx
+    from unittest.mock import MagicMock
+
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+
+    with patch.dict(os.environ, {
+        "DN_NOTIFICATION_METHOD": "google_chat",
+        "DN_GOOGLE_CHAT_WEBHOOK_URL": "https://chat.googleapis.com/v1/spaces/test/messages?key=k&token=t",
+        "DN_OBSIDIAN_VAULT_PATH": "/tmp/test",
+        "DN_API_TOKEN": "test",
+    }):
+        import importlib
+        import app.config
+        importlib.reload(app.config)
+        import app.services.notifier
+        importlib.reload(app.services.notifier)
+        from app.services.notifier import _send_google_chat
+
+        import asyncio
+
+        async def run_test():
+            with patch("app.services.notifier.httpx.AsyncClient") as mock_client_cls:
+                mock_client = AsyncMock()
+                mock_client.post.return_value = mock_response
+                mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+                mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+
+                result = await _send_google_chat("Test Title", "Test Message")
+                assert result is True
+                mock_client.post.assert_called_once()
+                call_args = mock_client.post.call_args
+                assert "chat.googleapis.com" in call_args[0][0]
+                assert call_args[1]["json"]["text"] == "*Test Title*\nTest Message"
+
+        asyncio.run(run_test())
