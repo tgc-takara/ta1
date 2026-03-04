@@ -1,0 +1,32 @@
+---
+date: {{ date }}
+weekday: {{ weekday }}
+created: {{ date }}
+tags: [daily-note]
+---
+
+# {{ date }} ({{ weekday }})
+
+## Tasks
+{% for task in tasks %}
+- [ ] {{ task }}
+{% endfor %}
+{% if not tasks %}
+_タスクなし_
+{% endif %}
+
+{% if memo %}
+## Memo
+{{ memo }}
+{% endif %}
+
+{% if existing_sections %}
+## Obsidian Notes
+{% for heading, body in existing_sections.items() %}
+{% if heading != "_top" %}
+### {{ heading }}
+{% endif %}
+{{ body }}
+
+{% endfor %}
+{% endif %}

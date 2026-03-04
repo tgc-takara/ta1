@@ -1,0 +1,12 @@
+services:
+  daily-note-api:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ${DN_OBSIDIAN_VAULT_PATH:-./sample_vault}:/vault
+    env_file:
+      - .env
+    environment:
+      - DN_OBSIDIAN_VAULT_PATH=/vault
+    restart: unless-stopped
