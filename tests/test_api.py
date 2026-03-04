@@ -150,7 +150,7 @@ def test_invalid_date_format(client, auth_headers):
 
 
 def test_append_to_existing_obsidian_note(client, auth_headers, setup_env):
-    """Existing Obsidian daily note should be preserved with tasks appended."""
+    """Existing Obsidian daily note should be preserved with tasks appended under 今日のto do."""
     existing = setup_env["daily_notes_path"] / "2025-04-01.md"
     existing.write_text(
         "# 2025-04-01\n\n## Meeting Notes\n- 10:00 Team sync\n\n## Ideas\n- New feature proposal\n",
@@ -173,15 +173,16 @@ def test_append_to_existing_obsidian_note(client, auth_headers, setup_env):
     assert "Team sync" in content
     assert "Ideas" in content
     assert "New feature proposal" in content
-    # New task appended
+    # New task appended under 今日のto do section
+    assert "## 今日のto do" in content
     assert "- [ ] 新しいタスク" in content
 
 
-def test_append_to_existing_note_with_tasks_section(client, auth_headers, setup_env):
-    """Tasks should be inserted into existing Tasks section."""
+def test_append_to_existing_note_with_todo_section(client, auth_headers, setup_env):
+    """Tasks should be inserted into existing 今日のto do section."""
     existing = setup_env["daily_notes_path"] / "2025-05-01.md"
     existing.write_text(
-        "# 2025-05-01\n\n## Tasks\n- [ ] 既存タスクA\n- [x] 完了済みB\n\n## Notes\nSome notes here\n",
+        "# 2025-05-01\n\n## 今日のto do\n- [ ] 既存タスクA\n- [x] 完了済みB\n\n## Notes\nSome notes here\n",
         encoding="utf-8",
     )
 
@@ -206,24 +207,48 @@ def test_append_to_existing_note_with_tasks_section(client, auth_headers, setup_
     assert "Some notes here" in content
 
 
-def test_append_memo_to_existing_note(client, auth_headers, setup_env):
-    """Memo should be appended as a separate section."""
-    existing = setup_env["daily_notes_path"] / "2025-06-01.md"
-    existing.write_text("# 2025-06-01\n\n## Tasks\n- [ ] 既存タスク\n", encoding="utf-8")
-
+def test_memo_saved_to_temporary_file(client, auth_headers, setup_env):
+    """Memo should be saved to 01_Temporary/Temporary-memo.md."""
     resp = client.post(
         "/api/daily-note",
         json={
-            "tasks": [],
+            "tasks": ["テストタスク"],
             "memo": "iPhoneから送ったメモ",
             "date": "2025-06-01",
         },
         headers=auth_headers,
     )
     assert resp.status_code == 200
+    # Memo should NOT be in the daily note content
     content = resp.json()["content"]
-    assert "既存タスク" in content
-    assert "iPhoneから送ったメモ" in content
+    assert "iPhoneから送ったメモ" not in content
+    # Memo should be in 01_Temporary/Temporary-memo.md
+    memo_file = setup_env["vault_path"] / "01_Temporary" / "Temporary-memo.md"
+    assert memo_file.exists()
+    memo_content = memo_file.read_text(encoding="utf-8")
+    assert "iPhoneから送ったメモ" in memo_content
+
+
+def test_memo_appended_to_existing_temporary_file(client, auth_headers, setup_env):
+    """Multiple memos should be appended to Temporary-memo.md."""
+    memo_dir = setup_env["vault_path"] / "01_Temporary"
+    memo_dir.mkdir(parents=True, exist_ok=True)
+    memo_file = memo_dir / "Temporary-memo.md"
+    memo_file.write_text("既存のメモ内容\n", encoding="utf-8")
+
+    resp = client.post(
+        "/api/daily-note",
+        json={
+            "tasks": [],
+            "memo": "追加メモ",
+            "date": "2025-06-02",
+        },
+        headers=auth_headers,
+    )
+    assert resp.status_code == 200
+    memo_content = memo_file.read_text(encoding="utf-8")
+    assert "既存のメモ内容" in memo_content
+    assert "追加メモ" in memo_content
 
 
 def test_google_chat_notification():

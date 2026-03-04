@@ -7,7 +7,7 @@ tags: [daily-note]
 
 # {{ date }} ({{ weekday }})
 
-## Tasks
+## 今日のto do
 {% for task in tasks %}
 - [ ] {{ task }}
 {% endfor %}
@@ -15,10 +15,6 @@ tags: [daily-note]
 _タスクなし_
 {% endif %}
 
-{% if memo %}
-## Memo
-{{ memo }}
-{% endif %}
 
 {% if existing_sections %}
 ## Obsidian Notes

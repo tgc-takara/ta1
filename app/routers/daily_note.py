@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 
 from app.auth import verify_token
-from app.services.note_generator import generate_daily_note, save_daily_note
+from app.services.note_generator import generate_daily_note, save_daily_note, save_memo
 from app.services.notifier import send_notification
 from app.services.obsidian import read_existing_daily_note, find_recent_notes
 
@@ -36,6 +36,7 @@ async def create_daily_note(input_data: TaskInput):
     )
 
     saved_path = save_daily_note(target_date, content)
+    save_memo(input_data.memo)
 
     notified = await send_notification(
         title=f"Daily Note: {target_date.isoformat()}",
@@ -69,6 +70,7 @@ async def create_daily_note_from_file(
     )
 
     saved_path = save_daily_note(d, note_content)
+    save_memo(memo_text)
 
     notified = await send_notification(
         title=f"Daily Note: {d.isoformat()}",

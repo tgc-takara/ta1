@@ -62,7 +62,7 @@ def _append_to_existing(existing: str, tasks: list[str], memo_text: str) -> str:
 
     # Try to find an existing Tasks heading and append under it
     tasks_pattern = re.compile(
-        r"(^##\s*(?:Tasks|タスク|Todo|TODO|To-Do).*$)",
+        r"(^##\s*(?:今日のto\s*do|Tasks|タスク|Todo|TODO|To-Do).*$)",
         re.MULTILINE | re.IGNORECASE,
     )
     match = tasks_pattern.search(result)
@@ -83,13 +83,32 @@ def _append_to_existing(existing: str, tasks: list[str], memo_text: str) -> str:
         else:
             result = result.rstrip() + "\n" + task_lines
     elif task_lines:
-        result += "\n\n## Tasks\n" + task_lines
+        result += "\n\n## 今日のto do\n" + task_lines
 
-    # Append memo
-    if memo_text.strip():
-        result += "\n\n## Memo (iPhone)\n" + memo_text.strip()
+    # Memo is saved separately to 01_Temporary/Temporary-memo.md
 
     return result + "\n"
+
+
+def save_memo(memo_text: str) -> str | None:
+    """Append memo text to 01_Temporary/Temporary-memo.md in the vault."""
+    if not memo_text or not memo_text.strip():
+        return None
+    if not settings.obsidian_vault_path:
+        return None
+
+    memo_dir = settings.vault_path / "01_Temporary"
+    memo_dir.mkdir(parents=True, exist_ok=True)
+    memo_file = memo_dir / "Temporary-memo.md"
+
+    # Append to existing file (create if not exists)
+    existing = ""
+    if memo_file.exists():
+        existing = memo_file.read_text(encoding="utf-8")
+
+    new_content = existing.rstrip() + "\n\n" + memo_text.strip() + "\n" if existing.strip() else memo_text.strip() + "\n"
+    memo_file.write_text(new_content, encoding="utf-8")
+    return str(memo_file)
 
 
 def save_daily_note(target_date: date, content: str) -> str:
