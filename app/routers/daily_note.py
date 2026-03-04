@@ -36,7 +36,7 @@ async def create_daily_note(input_data: TaskInput):
     )
 
     saved_path = save_daily_note(target_date, content)
-    save_memo(input_data.memo)
+    save_memo(input_data.memo, target_date)
 
     notified = await send_notification(
         title=f"Daily Note: {target_date.isoformat()}",
@@ -70,7 +70,7 @@ async def create_daily_note_from_file(
     )
 
     saved_path = save_daily_note(d, note_content)
-    save_memo(memo_text)
+    save_memo(memo_text, d)
 
     notified = await send_notification(
         title=f"Daily Note: {d.isoformat()}",

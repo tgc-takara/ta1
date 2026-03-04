@@ -33,6 +33,37 @@ def find_recent_notes(days: int = 7) -> dict[str, str]:
     return notes
 
 
+def read_action_log() -> str:
+    """Read the action log from 01_Temporary/Temporary-memo.md."""
+    if not settings.obsidian_vault_path:
+        return ""
+    path = settings.vault_path / "01_Temporary" / "Temporary-memo.md"
+    if path.exists():
+        return path.read_text(encoding="utf-8")
+    return ""
+
+
+def read_diary_prompt() -> str:
+    """Read the diary prompt template from 91_Prompt/diary-prompt.md."""
+    if not settings.obsidian_vault_path:
+        return ""
+    path = settings.vault_path / "91_Prompt" / "diary-prompt.md"
+    if path.exists():
+        return path.read_text(encoding="utf-8")
+    return ""
+
+
+def read_diary(target_date: date) -> str | None:
+    """Read an existing diary entry for the given date from 02_Diary/."""
+    if not settings.obsidian_vault_path:
+        return None
+    filename = target_date.strftime(settings.obsidian_date_format) + ".md"
+    path = settings.vault_path / "02_Diary" / filename
+    if path.exists():
+        return path.read_text(encoding="utf-8")
+    return None
+
+
 def list_vault_notes(subfolder: str = "") -> list[str]:
     """List markdown files in the vault (or a subfolder)."""
     search_path = settings.vault_path / subfolder if subfolder else settings.vault_path

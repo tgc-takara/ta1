@@ -207,8 +207,8 @@ def test_append_to_existing_note_with_todo_section(client, auth_headers, setup_e
     assert "Some notes here" in content
 
 
-def test_memo_saved_to_temporary_file(client, auth_headers, setup_env):
-    """Memo should be saved to 01_Temporary/Temporary-memo.md."""
+def test_memo_saved_to_diary(client, auth_headers, setup_env):
+    """Memo should be saved to 02_Diary/YYYY-MM-DD.md."""
     resp = client.post(
         "/api/daily-note",
         json={
@@ -222,19 +222,19 @@ def test_memo_saved_to_temporary_file(client, auth_headers, setup_env):
     # Memo should NOT be in the daily note content
     content = resp.json()["content"]
     assert "iPhoneから送ったメモ" not in content
-    # Memo should be in 01_Temporary/Temporary-memo.md
-    memo_file = setup_env["vault_path"] / "01_Temporary" / "Temporary-memo.md"
-    assert memo_file.exists()
-    memo_content = memo_file.read_text(encoding="utf-8")
-    assert "iPhoneから送ったメモ" in memo_content
+    # Memo should be in 02_Diary/2025-06-01.md
+    diary_file = setup_env["vault_path"] / "02_Diary" / "2025-06-01.md"
+    assert diary_file.exists()
+    diary_content = diary_file.read_text(encoding="utf-8")
+    assert "iPhoneから送ったメモ" in diary_content
 
 
-def test_memo_appended_to_existing_temporary_file(client, auth_headers, setup_env):
-    """Multiple memos should be appended to Temporary-memo.md."""
-    memo_dir = setup_env["vault_path"] / "01_Temporary"
-    memo_dir.mkdir(parents=True, exist_ok=True)
-    memo_file = memo_dir / "Temporary-memo.md"
-    memo_file.write_text("既存のメモ内容\n", encoding="utf-8")
+def test_memo_appended_to_existing_diary(client, auth_headers, setup_env):
+    """Multiple memos should be appended to the diary file."""
+    diary_dir = setup_env["vault_path"] / "02_Diary"
+    diary_dir.mkdir(parents=True, exist_ok=True)
+    diary_file = diary_dir / "2025-06-02.md"
+    diary_file.write_text("既存の日記内容\n", encoding="utf-8")
 
     resp = client.post(
         "/api/daily-note",
@@ -246,9 +246,64 @@ def test_memo_appended_to_existing_temporary_file(client, auth_headers, setup_en
         headers=auth_headers,
     )
     assert resp.status_code == 200
-    memo_content = memo_file.read_text(encoding="utf-8")
-    assert "既存のメモ内容" in memo_content
-    assert "追加メモ" in memo_content
+    diary_content = diary_file.read_text(encoding="utf-8")
+    assert "既存の日記内容" in diary_content
+    assert "追加メモ" in diary_content
+
+
+def test_action_log_included_in_new_note(client, auth_headers, setup_env):
+    """Action log from 01_Temporary/Temporary-memo.md should be available when generating a new note."""
+    # Create action log
+    tmp_dir = setup_env["vault_path"] / "01_Temporary"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    (tmp_dir / "Temporary-memo.md").write_text(
+        "09:00 朝会\n12:00 ランチ\n14:00 開発作業",
+        encoding="utf-8",
+    )
+
+    resp = client.post(
+        "/api/daily-note",
+        json={"tasks": ["テスト"], "date": "2025-07-01"},
+        headers=auth_headers,
+    )
+    assert resp.status_code == 200
+    # Note should be created successfully (action log is used as template variable)
+    assert resp.json()["content"]
+
+
+def test_diary_prompt_used_as_template(client, auth_headers, setup_env):
+    """91_Prompt/diary-prompt.md should be used as the template when available."""
+    # Create diary-prompt template
+    prompt_dir = setup_env["vault_path"] / "91_Prompt"
+    prompt_dir.mkdir(parents=True, exist_ok=True)
+    (prompt_dir / "diary-prompt.md").write_text(
+        "# {{ date }} ({{ weekday }})\n\n"
+        "## 今日のto do\n"
+        "{% for task in tasks %}\n"
+        "- [ ] {{ task }}\n"
+        "{% endfor %}\n"
+        "{% if action_log %}\n"
+        "## 行動ログ\n"
+        "{{ action_log }}\n"
+        "{% endif %}\n",
+        encoding="utf-8",
+    )
+
+    # Create action log
+    tmp_dir = setup_env["vault_path"] / "01_Temporary"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    (tmp_dir / "Temporary-memo.md").write_text("10:00 ミーティング", encoding="utf-8")
+
+    resp = client.post(
+        "/api/daily-note",
+        json={"tasks": ["レビュー"], "date": "2025-08-01"},
+        headers=auth_headers,
+    )
+    assert resp.status_code == 200
+    content = resp.json()["content"]
+    assert "## 行動ログ" in content
+    assert "10:00 ミーティング" in content
+    assert "- [ ] レビュー" in content
 
 
 def test_google_chat_notification():

@@ -4,7 +4,7 @@ from datetime import date
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from app.config import settings
-from app.services.obsidian import read_existing_daily_note
+from app.services.obsidian import read_existing_daily_note, read_action_log, read_diary_prompt, read_diary
 
 
 _template_dir = str((settings.vault_path / "templates").resolve()) if settings.obsidian_vault_path else "templates"
@@ -26,22 +26,40 @@ def generate_daily_note(
 ) -> str:
     """Generate or update a daily note.
 
-    If an existing Obsidian daily note is found, tasks and memo are appended
+    If an existing Obsidian daily note is found, tasks are appended
     into it (preserving the original content). Otherwise a new note is created
-    from the template.
+    from the diary-prompt template (or fallback Jinja2 template).
+
+    The action log from 01_Temporary/Temporary-memo.md is included as reference.
     """
     existing_note = read_existing_daily_note(target_date)
 
     if existing_note:
         return _append_to_existing(existing_note, tasks, memo_text)
 
-    # No existing note — create from template
+    # Read action log and diary prompt from vault
+    action_log = read_action_log()
+    diary_prompt = read_diary_prompt()
+
+    if diary_prompt:
+        # Use diary-prompt.md from vault as the template
+        from jinja2 import Environment
+        env = Environment()
+        template = env.from_string(diary_prompt)
+        return template.render(
+            date=target_date.isoformat(),
+            weekday=_weekday_ja(target_date),
+            tasks=tasks,
+            action_log=action_log,
+        )
+
+    # Fallback — use built-in Jinja2 template
     template = _env.get_template("daily_note.md.j2")
     return template.render(
         date=target_date.isoformat(),
         weekday=_weekday_ja(target_date),
         tasks=tasks,
-        memo=memo_text,
+        action_log=action_log,
         existing_sections={},
         existing_note="",
     )
@@ -90,25 +108,29 @@ def _append_to_existing(existing: str, tasks: list[str], memo_text: str) -> str:
     return result + "\n"
 
 
-def save_memo(memo_text: str) -> str | None:
-    """Append memo text to 01_Temporary/Temporary-memo.md in the vault."""
+def save_memo(memo_text: str, target_date: date | None = None) -> str | None:
+    """Append memo text to 02_Diary/YYYY-MM-DD.md in the vault."""
     if not memo_text or not memo_text.strip():
         return None
     if not settings.obsidian_vault_path:
         return None
 
-    memo_dir = settings.vault_path / "01_Temporary"
-    memo_dir.mkdir(parents=True, exist_ok=True)
-    memo_file = memo_dir / "Temporary-memo.md"
+    if target_date is None:
+        target_date = date.today()
 
-    # Append to existing file (create if not exists)
+    diary_dir = settings.vault_path / "02_Diary"
+    diary_dir.mkdir(parents=True, exist_ok=True)
+    filename = target_date.strftime(settings.obsidian_date_format) + ".md"
+    diary_file = diary_dir / filename
+
+    # Append to existing diary file (create if not exists)
     existing = ""
-    if memo_file.exists():
-        existing = memo_file.read_text(encoding="utf-8")
+    if diary_file.exists():
+        existing = diary_file.read_text(encoding="utf-8")
 
     new_content = existing.rstrip() + "\n\n" + memo_text.strip() + "\n" if existing.strip() else memo_text.strip() + "\n"
-    memo_file.write_text(new_content, encoding="utf-8")
-    return str(memo_file)
+    diary_file.write_text(new_content, encoding="utf-8")
+    return str(diary_file)
 
 
 def save_daily_note(target_date: date, content: str) -> str:
