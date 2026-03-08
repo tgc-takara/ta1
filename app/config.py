@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     # Obsidian Vault path
     obsidian_vault_path: str = ""
     # Obsidian daily notes subfolder (relative to vault root)
-    obsidian_daily_notes_folder: str = "Daily Notes"
+    obsidian_daily_notes_folder: str = "02_Diary"
     # Daily note date format (used in filenames)
     obsidian_date_format: str = "%Y-%m-%d"
 
