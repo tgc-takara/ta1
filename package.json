@@ -1,0 +1,17 @@
+{
+  "name": "ta1-meishi",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Google Apps Script による名刺管理アプリ（動画一括取り込み + Gemini OCR）",
+  "scripts": {
+    "login": "clasp login",
+    "push": "clasp push",
+    "pull": "clasp pull",
+    "open": "clasp open",
+    "deploy": "clasp deploy",
+    "logs": "clasp logs --watch"
+  },
+  "devDependencies": {
+    "@google/clasp": "^2.4.2"
+  }
+}

@@ -1,0 +1,156 @@
+<script>
+/**
+ * 録画 + フレーム抽出ユーティリティ。
+ * - VideoCapture.start(videoEl) / stop() で MediaRecorder を操作
+ * - VideoCapture.extractFrames(blob, timestamps) で代表フレームを JPEG(dataURL) で返す
+ */
+window.VideoCapture = (function () {
+  var stream = null;
+  var recorder = null;
+  var chunks = [];
+  var timerId = null;
+  var startedAt = 0;
+  var onTick = null;
+
+  function pickMimeType() {
+    var candidates = [
+      'video/mp4;codecs=h264,aac',
+      'video/mp4',
+      'video/webm;codecs=vp9,opus',
+      'video/webm;codecs=vp8,opus',
+      'video/webm'
+    ];
+    for (var i = 0; i < candidates.length; i++) {
+      if (window.MediaRecorder && MediaRecorder.isTypeSupported(candidates[i])) return candidates[i];
+    }
+    return '';
+  }
+
+  async function start(videoEl, tickCallback) {
+    onTick = tickCallback || null;
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false
+    });
+    videoEl.srcObject = stream;
+    await videoEl.play();
+
+    var mimeType = pickMimeType();
+    var opts = mimeType ? { mimeType: mimeType, videoBitsPerSecond: 2_000_000 } : {};
+    recorder = new MediaRecorder(stream, opts);
+    chunks = [];
+    recorder.ondataavailable = function (e) { if (e.data && e.data.size > 0) chunks.push(e.data); };
+    var stopped = new Promise(function (resolve) { recorder.onstop = resolve; });
+    recorder.start(1000);
+    startedAt = Date.now();
+    timerId = setInterval(function () {
+      if (onTick) onTick(Math.floor((Date.now() - startedAt) / 1000));
+    }, 250);
+    return { stopped: stopped, mimeType: recorder.mimeType || mimeType || 'video/webm' };
+  }
+
+  async function stop() {
+    if (!recorder) return null;
+    if (timerId) { clearInterval(timerId); timerId = null; }
+    var mimeType = recorder.mimeType || 'video/webm';
+    var p = new Promise(function (resolve) {
+      recorder.onstop = function () { resolve(); };
+    });
+    recorder.stop();
+    await p;
+    if (stream) stream.getTracks().forEach(function (t) { t.stop(); });
+    stream = null;
+    var blob = new Blob(chunks, { type: mimeType });
+    chunks = [];
+    recorder = null;
+    return { blob: blob, mimeType: mimeType };
+  }
+
+  function blobToDataUrl(blob) {
+    return new Promise(function (resolve, reject) {
+      var r = new FileReader();
+      r.onload = function () { resolve(r.result); };
+      r.onerror = reject;
+      r.readAsDataURL(blob);
+    });
+  }
+
+  /**
+   * チャンク送信用。blob を指定バイト単位で base64 に分割。
+   * GAS の CacheService 上限に収めるため 60KB 程度を推奨。
+   */
+  async function blobToBase64Chunks(blob, chunkBytes) {
+    var buf = await blob.arrayBuffer();
+    var bytes = new Uint8Array(buf);
+    var total = bytes.length;
+    var chunks = [];
+    for (var i = 0; i < total; i += chunkBytes) {
+      var end = Math.min(i + chunkBytes, total);
+      var slice = bytes.subarray(i, end);
+      // btoa は文字列を期待するので、8bit文字列を作る
+      var bin = '';
+      for (var j = 0; j < slice.length; j++) bin += String.fromCharCode(slice[j]);
+      chunks.push(btoa(bin));
+    }
+    return chunks;
+  }
+
+  /**
+   * blob を <video> で再生しつつ、各 timestampSec で JPEG を抽出。
+   */
+  async function extractFrames(blob, timestamps, maxWidth) {
+    if (!timestamps || !timestamps.length) return [];
+    var url = URL.createObjectURL(blob);
+    var video = document.createElement('video');
+    video.src = url;
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = 'auto';
+
+    await new Promise(function (resolve, reject) {
+      video.onloadedmetadata = resolve;
+      video.onerror = reject;
+    });
+
+    var w = video.videoWidth;
+    var h = video.videoHeight;
+    if (maxWidth && w > maxWidth) { var ratio = maxWidth / w; w = maxWidth; h = Math.round(h * ratio); }
+    var canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    var ctx = canvas.getContext('2d');
+
+    var out = [];
+    for (var i = 0; i < timestamps.length; i++) {
+      var t = Math.max(0, Math.min(video.duration || 0, Number(timestamps[i]) || 0));
+      await seekTo_(video, t);
+      ctx.drawImage(video, 0, 0, w, h);
+      out.push(canvas.toDataURL('image/jpeg', 0.85));
+    }
+    URL.revokeObjectURL(url);
+    return out;
+  }
+
+  function seekTo_(video, t) {
+    return new Promise(function (resolve) {
+      var done = false;
+      function onSeeked() {
+        if (done) return; done = true;
+        video.removeEventListener('seeked', onSeeked);
+        resolve();
+      }
+      video.addEventListener('seeked', onSeeked);
+      try { video.currentTime = t; } catch (e) { resolve(); }
+      // safety timeout
+      setTimeout(function () { if (!done) { done = true; video.removeEventListener('seeked', onSeeked); resolve(); } }, 2000);
+    });
+  }
+
+  return {
+    start: start,
+    stop: stop,
+    blobToDataUrl: blobToDataUrl,
+    blobToBase64Chunks: blobToBase64Chunks,
+    extractFrames: extractFrames
+  };
+})();
+</script>

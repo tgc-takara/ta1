@@ -1,0 +1,484 @@
+<script>
+/**
+ * メインのクライアントロジック。
+ * - タブ切替
+ * - 一覧表示 / 検索 / タグ絞込
+ * - 動画取り込みフロー
+ * - 写真1枚取り込みフロー
+ * - 編集モーダル
+ */
+(function () {
+  'use strict';
+
+  var state = {
+    bootstrap: null,
+    cards: [],
+    filters: { q: '', tag: '' },
+    editingId: null,
+    capture: { blob: null, mimeType: null, recordedUrl: null },
+    reviewCards: null,  // 動画レビュー中の検出結果
+    reviewVideoFileId: null,
+    photo: { dataUrl: null, extracted: null }
+  };
+
+  var EDITABLE_FIELDS = [
+    '氏名','ふりがな','会社名','部署','役職',
+    'Email','電話','携帯','FAX','郵便番号','住所','URL',
+    'Twitter','LinkedIn','Facebook','Instagram',
+    '出会った日','出会った場所','メモ','タグ'
+  ];
+
+  // ===== util =====
+  function $(sel) { return document.querySelector(sel); }
+  function $$(sel) { return Array.prototype.slice.call(document.querySelectorAll(sel)); }
+  function el(tag, attrs, children) {
+    var node = document.createElement(tag);
+    if (attrs) Object.keys(attrs).forEach(function (k) {
+      if (k === 'class') node.className = attrs[k];
+      else if (k === 'text') node.textContent = attrs[k];
+      else if (k === 'html') node.innerHTML = attrs[k];
+      else if (k.indexOf('on') === 0) node.addEventListener(k.substring(2), attrs[k]);
+      else node.setAttribute(k, attrs[k]);
+    });
+    (children || []).forEach(function (c) { if (c) node.appendChild(c); });
+    return node;
+  }
+  function toast(msg) {
+    var t = $('#toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(function () { t.classList.remove('show'); }, 2400);
+  }
+  function runServer(fn) {
+    var args = Array.prototype.slice.call(arguments, 1);
+    return new Promise(function (resolve, reject) {
+      google.script.run
+        .withSuccessHandler(resolve)
+        .withFailureHandler(function (e) { reject(e); })[fn].apply(google.script.run, args);
+    });
+  }
+  function fmtTimer(sec) {
+    var m = Math.floor(sec / 60), s = sec % 60;
+    return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
+  // ===== タブ =====
+  function initTabs() {
+    $$('.tab').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var id = btn.getAttribute('data-tab');
+        $$('.tab').forEach(function (b) { b.classList.toggle('active', b === btn); });
+        $$('.tab-pane').forEach(function (p) { p.classList.toggle('active', p.id === 'tab-' + id); });
+        if (id === 'list') loadCards();
+      });
+    });
+  }
+
+  // ===== 一覧 =====
+  async function loadCards() {
+    try {
+      state.cards = await runServer('api_listCards');
+      renderList();
+    } catch (e) {
+      toast('一覧の取得に失敗: ' + (e.message || e));
+    }
+  }
+
+  function renderList() {
+    var list = $('#cardList'); list.innerHTML = '';
+    var q = state.filters.q.trim().toLowerCase();
+    var tag = state.filters.tag;
+    var items = state.cards.filter(function (c) {
+      if (tag && String(c['タグ'] || '').split(',').map(function (s){return s.trim();}).indexOf(tag) < 0) return false;
+      if (!q) return true;
+      return ['氏名','ふりがな','会社名','部署','役職','メモ','Email','タグ']
+        .some(function (k) { return String(c[k] || '').toLowerCase().indexOf(q) >= 0; });
+    }).sort(function (a, b) {
+      return String(b.updatedAt || '').localeCompare(String(a.updatedAt || ''));
+    });
+
+    items.forEach(function (c) {
+      var card = el('div', { class: 'card', onclick: function () { openEdit(c.id); } }, [
+        c.imageUrl ? el('img', { src: c.imageUrl, referrerpolicy: 'no-referrer', loading: 'lazy', alt: '' }) : el('img', { src: 'https://via.placeholder.com/300x180?text=No+Image', alt: '' }),
+        el('div', { class: 'name', text: c['氏名'] || '(名前未記入)' }),
+        el('div', { class: 'company', text: [c['会社名'], c['部署'], c['役職']].filter(Boolean).join(' / ') }),
+        el('div', { class: 'tags' }, (String(c['タグ'] || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean).map(function (t) {
+          return el('span', { class: 'chip', text: t });
+        })))
+      ]);
+      list.appendChild(card);
+    });
+    if (!items.length) list.appendChild(el('p', { class: 'hint', text: '該当する名刺がありません。' }));
+
+    // タグチップ
+    var chips = $('#tagChips'); chips.innerHTML = '';
+    var tagSet = {};
+    state.cards.forEach(function (c) {
+      String(c['タグ'] || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean).forEach(function (t) { tagSet[t] = true; });
+    });
+    Object.keys(tagSet).sort().forEach(function (t) {
+      chips.appendChild(el('span', {
+        class: 'chip' + (state.filters.tag === t ? ' active' : ''),
+        text: t,
+        onclick: function () { state.filters.tag = state.filters.tag === t ? '' : t; renderList(); }
+      }));
+    });
+  }
+
+  // ===== 動画キャプチャ =====
+  function initCaptureTab() {
+    var startBtn = $('#startRec');
+    var stopBtn = $('#stopRec');
+    var previewVideo = $('#preview');
+    var recordedVideo = $('#recorded');
+    var processBtn = $('#processBtn');
+    var timerEl = $('#recTimer');
+    var statusEl = $('#captureStatus');
+
+    startBtn.addEventListener('click', async function () {
+      try {
+        startBtn.disabled = true;
+        await VideoCapture.start(previewVideo, function (sec) { timerEl.textContent = fmtTimer(sec); });
+        stopBtn.disabled = false;
+        statusEl.textContent = '録画中…';
+      } catch (e) {
+        startBtn.disabled = false;
+        toast('カメラの起動に失敗: ' + (e.message || e));
+      }
+    });
+
+    stopBtn.addEventListener('click', async function () {
+      stopBtn.disabled = true;
+      var r = await VideoCapture.stop();
+      startBtn.disabled = false;
+      if (!r) { statusEl.textContent = ''; return; }
+      state.capture.blob = r.blob;
+      state.capture.mimeType = r.mimeType;
+      if (state.capture.recordedUrl) URL.revokeObjectURL(state.capture.recordedUrl);
+      state.capture.recordedUrl = URL.createObjectURL(r.blob);
+      recordedVideo.src = state.capture.recordedUrl;
+      recordedVideo.classList.remove('hidden');
+      processBtn.disabled = false;
+      statusEl.textContent = '録画完了: ' + Math.round(r.blob.size / 1024) + ' KB';
+    });
+
+    processBtn.addEventListener('click', async function () {
+      if (!state.capture.blob) return;
+      processBtn.disabled = true;
+      try {
+        await uploadAndExtract(state.capture.blob, state.capture.mimeType, statusEl);
+      } catch (e) {
+        toast('失敗: ' + (e.message || e));
+        statusEl.textContent = 'エラー: ' + (e.message || e);
+      } finally {
+        processBtn.disabled = false;
+      }
+    });
+
+    $('#cancelReviewBtn').addEventListener('click', function () {
+      $('#reviewArea').classList.add('hidden');
+      state.reviewCards = null;
+      state.reviewVideoFileId = null;
+    });
+
+    $('#saveAllBtn').addEventListener('click', saveAllReviewed);
+  }
+
+  async function uploadAndExtract(blob, mimeType, statusEl) {
+    statusEl.textContent = 'アップロード準備中…';
+    // チャンク分割して送信
+    var chunks = await VideoCapture.blobToBase64Chunks(blob, 60 * 1024);
+    var session = await runServer('api_startVideoUpload', mimeType || 'video/mp4');
+    for (var i = 0; i < chunks.length; i++) {
+      statusEl.textContent = 'アップロード中 ' + (i + 1) + '/' + chunks.length;
+      await runServer('api_appendVideoChunk', session.sessionId, chunks[i], i);
+    }
+    statusEl.textContent = 'Drive に保存中…';
+    var saved = await runServer('api_finishVideoUpload', session.sessionId, chunks.length);
+    state.reviewVideoFileId = saved.fileId;
+
+    statusEl.textContent = 'Gemini で名刺を抽出中… (動画の長さにより数十秒〜)';
+    var detected = await runServer('api_extractFromVideo', saved.fileId);
+    if (!detected || !detected.length) {
+      statusEl.textContent = '名刺が検出されませんでした。';
+      toast('名刺が検出されませんでした');
+      return;
+    }
+    statusEl.textContent = '代表フレームを抽出中…';
+    var frames = await VideoCapture.extractFrames(blob, detected.map(function (c) { return c.representativeTimeSec || 0; }), 1280);
+
+    // 各フレームを Drive に保存（サムネとして利用）
+    statusEl.textContent = 'サムネイル画像を保存中…';
+    for (var j = 0; j < detected.length; j++) {
+      try {
+        var up = await runServer('api_uploadCardImage', frames[j]);
+        detected[j].imageFileId = up.fileId;
+        detected[j].imageUrl = up.thumbnailUrl || up.viewUrl;
+      } catch (e) {
+        detected[j].imageFileId = '';
+        detected[j].imageUrl = '';
+      }
+      detected[j].sourceTimestampSec = detected[j].representativeTimeSec || 0;
+      detected[j]['タグ'] = (detected[j].suggestedTags || []).join(',');
+    }
+
+    state.reviewCards = detected;
+    renderReview();
+    statusEl.textContent = detected.length + ' 件検出';
+  }
+
+  function renderReview() {
+    var box = $('#reviewList'); box.innerHTML = '';
+    state.reviewCards.forEach(function (c, idx) {
+      var card = el('div', { class: 'review-card' }, [
+        c.imageUrl ? el('img', { src: c.imageUrl, referrerpolicy: 'no-referrer', alt: '' }) : null,
+        buildFieldRow('氏名', c, idx),
+        buildFieldRow('会社名', c, idx),
+        buildFieldRow('役職', c, idx),
+        buildFieldRow('Email', c, idx),
+        buildFieldRow('電話', c, idx),
+        buildFieldRow('タグ', c, idx),
+        el('div', { class: 'drop' }, [
+          el('button', { class: 'ghost', text: '除外', onclick: function () {
+            state.reviewCards.splice(idx, 1);
+            renderReview();
+          }})
+        ])
+      ]);
+      box.appendChild(card);
+    });
+    $('#reviewArea').classList.toggle('hidden', !state.reviewCards || !state.reviewCards.length);
+  }
+
+  function buildFieldRow(key, obj, idx) {
+    return el('div', { class: 'row' }, [
+      el('label', { text: key }),
+      el('input', { value: obj[key] || '', oninput: function (e) { state.reviewCards[idx][key] = e.target.value; } })
+    ]);
+  }
+
+  async function saveAllReviewed() {
+    if (!state.reviewCards || !state.reviewCards.length) return;
+    var btn = $('#saveAllBtn'); btn.disabled = true;
+    try {
+      var payload = state.reviewCards.map(function (c) {
+        return {
+          imageFileId: c.imageFileId || '',
+          imageUrl: c.imageUrl || '',
+          sourceVideoFileId: c.sourceVideoFileId || state.reviewVideoFileId || '',
+          sourceTimestampSec: c.sourceTimestampSec || c.representativeTimeSec || 0,
+          '氏名': c['氏名'] || '', 'ふりがな': c['ふりがな'] || '',
+          '会社名': c['会社名'] || '', '部署': c['部署'] || '', '役職': c['役職'] || '',
+          'Email': c['Email'] || '', '電話': c['電話'] || '', '携帯': c['携帯'] || '', 'FAX': c['FAX'] || '',
+          '郵便番号': c['郵便番号'] || '', '住所': c['住所'] || '', 'URL': c['URL'] || '',
+          'Twitter': c['Twitter'] || '', 'LinkedIn': c['LinkedIn'] || '', 'Facebook': c['Facebook'] || '', 'Instagram': c['Instagram'] || '',
+          '出会った日': c['出会った日'] || new Date().toISOString().slice(0, 10),
+          '出会った場所': c['出会った場所'] || '',
+          'メモ': c['メモ'] || '',
+          'タグ': c['タグ'] || ''
+        };
+      });
+      var saved = await runServer('api_createCardsBatch', payload);
+      toast(saved.length + ' 件保存しました');
+      state.reviewCards = null;
+      state.reviewVideoFileId = null;
+      $('#reviewArea').classList.add('hidden');
+      $('#recorded').classList.add('hidden');
+      $('#captureStatus').textContent = '';
+      $('#processBtn').disabled = true;
+      loadCards();
+      switchTab('list');
+    } catch (e) {
+      toast('保存失敗: ' + (e.message || e));
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function switchTab(name) {
+    $$('.tab').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-tab') === name); });
+    $$('.tab-pane').forEach(function (p) { p.classList.toggle('active', p.id === 'tab-' + name); });
+  }
+
+  // ===== 写真1枚モード =====
+  function initPhotoTab() {
+    var input = $('#photoInput');
+    var processBtn = $('#photoProcessBtn');
+    var preview = $('#photoPreview');
+    var statusEl = $('#photoStatus');
+
+    input.addEventListener('change', function () {
+      var f = input.files && input.files[0];
+      if (!f) { processBtn.disabled = true; return; }
+      var reader = new FileReader();
+      reader.onload = function () {
+        state.photo.dataUrl = reader.result;
+        preview.src = reader.result;
+        preview.classList.remove('hidden');
+        processBtn.disabled = false;
+      };
+      reader.readAsDataURL(f);
+    });
+
+    processBtn.addEventListener('click', async function () {
+      if (!state.photo.dataUrl) return;
+      processBtn.disabled = true;
+      statusEl.textContent = 'Gemini で抽出中…';
+      try {
+        var extracted = await runServer('api_extractFromImage', state.photo.dataUrl);
+        state.photo.extracted = extracted || {};
+        renderPhotoReview();
+        statusEl.textContent = '抽出完了。確認して保存してください。';
+      } catch (e) {
+        toast('抽出失敗: ' + (e.message || e));
+        statusEl.textContent = 'エラー: ' + (e.message || e);
+      } finally {
+        processBtn.disabled = false;
+      }
+    });
+
+    $('#photoCancelBtn').addEventListener('click', function () {
+      $('#photoReview').classList.add('hidden');
+      state.photo.extracted = null;
+    });
+    $('#photoSaveBtn').addEventListener('click', savePhotoCard);
+  }
+
+  function renderPhotoReview() {
+    var box = $('#photoReviewCard'); box.innerHTML = '';
+    var c = state.photo.extracted;
+    c['タグ'] = (c.suggestedTags || []).join(',');
+    var card = el('div', { class: 'review-card' }, [
+      el('img', { src: state.photo.dataUrl, alt: '' }),
+      buildFieldRowPhoto('氏名'),
+      buildFieldRowPhoto('会社名'),
+      buildFieldRowPhoto('役職'),
+      buildFieldRowPhoto('Email'),
+      buildFieldRowPhoto('電話'),
+      buildFieldRowPhoto('タグ')
+    ]);
+    box.appendChild(card);
+    $('#photoReview').classList.remove('hidden');
+  }
+
+  function buildFieldRowPhoto(key) {
+    return el('div', { class: 'row' }, [
+      el('label', { text: key }),
+      el('input', {
+        value: state.photo.extracted[key] || '',
+        oninput: function (e) { state.photo.extracted[key] = e.target.value; }
+      })
+    ]);
+  }
+
+  async function savePhotoCard() {
+    if (!state.photo.dataUrl) return;
+    var btn = $('#photoSaveBtn'); btn.disabled = true;
+    try {
+      var up = await runServer('api_uploadCardImage', state.photo.dataUrl);
+      var c = state.photo.extracted || {};
+      var payload = {
+        imageFileId: up.fileId, imageUrl: up.thumbnailUrl || up.viewUrl,
+        sourceVideoFileId: '', sourceTimestampSec: 0,
+        '氏名': c['氏名'] || '', 'ふりがな': c['ふりがな'] || '',
+        '会社名': c['会社名'] || '', '部署': c['部署'] || '', '役職': c['役職'] || '',
+        'Email': c['Email'] || '', '電話': c['電話'] || '', '携帯': c['携帯'] || '', 'FAX': c['FAX'] || '',
+        '郵便番号': c['郵便番号'] || '', '住所': c['住所'] || '', 'URL': c['URL'] || '',
+        'Twitter': c['Twitter'] || '', 'LinkedIn': c['LinkedIn'] || '', 'Facebook': c['Facebook'] || '', 'Instagram': c['Instagram'] || '',
+        '出会った日': c['出会った日'] || new Date().toISOString().slice(0, 10),
+        '出会った場所': c['出会った場所'] || '',
+        'メモ': c['メモ'] || '',
+        'タグ': c['タグ'] || ''
+      };
+      await runServer('api_createCardsBatch', [payload]);
+      toast('保存しました');
+      state.photo = { dataUrl: null, extracted: null };
+      $('#photoInput').value = '';
+      $('#photoPreview').classList.add('hidden');
+      $('#photoReview').classList.add('hidden');
+      $('#photoProcessBtn').disabled = true;
+      $('#photoStatus').textContent = '';
+      loadCards();
+      switchTab('list');
+    } catch (e) {
+      toast('保存失敗: ' + (e.message || e));
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  // ===== 編集モーダル =====
+  function openEdit(id) {
+    var card = state.cards.find(function (c) { return c.id === id; });
+    if (!card) return;
+    state.editingId = id;
+    var form = $('#editForm'); form.innerHTML = '';
+    if (card.imageUrl) form.appendChild(el('img', { src: card.imageUrl, referrerpolicy: 'no-referrer', alt: '' }));
+    EDITABLE_FIELDS.forEach(function (k) {
+      form.appendChild(el('label', { text: k }));
+      var useTextarea = k === 'メモ' || k === '住所';
+      var input = el(useTextarea ? 'textarea' : 'input', { name: k, value: card[k] || '' });
+      if (useTextarea) input.rows = 2;
+      if (k === '出会った日') input.type = 'date';
+      if (k === 'Email') input.type = 'email';
+      form.appendChild(input);
+    });
+    $('#editModal').classList.remove('hidden');
+  }
+
+  async function saveEdit() {
+    var form = $('#editForm');
+    var patch = {};
+    EDITABLE_FIELDS.forEach(function (k) {
+      var input = form.querySelector('[name="' + k + '"]');
+      if (input) patch[k] = input.value;
+    });
+    try {
+      await runServer('api_updateCard', state.editingId, patch);
+      toast('更新しました');
+      $('#editModal').classList.add('hidden');
+      loadCards();
+    } catch (e) { toast('更新失敗: ' + (e.message || e)); }
+  }
+
+  async function deleteEdit() {
+    if (!confirm('この名刺を削除しますか？')) return;
+    try {
+      await runServer('api_deleteCard', state.editingId);
+      toast('削除しました');
+      $('#editModal').classList.add('hidden');
+      loadCards();
+    } catch (e) { toast('削除失敗: ' + (e.message || e)); }
+  }
+
+  function initEditModal() {
+    $('#editSaveBtn').addEventListener('click', saveEdit);
+    $('#editDeleteBtn').addEventListener('click', deleteEdit);
+    $('#editCancelBtn').addEventListener('click', function () { $('#editModal').classList.add('hidden'); });
+  }
+
+  // ===== 検索 =====
+  function initSearch() {
+    $('#searchInput').addEventListener('input', function (e) { state.filters.q = e.target.value; renderList(); });
+    $('#reloadBtn').addEventListener('click', loadCards);
+  }
+
+  // ===== 起動 =====
+  async function boot() {
+    initTabs();
+    initCaptureTab();
+    initPhotoTab();
+    initEditModal();
+    initSearch();
+    try {
+      state.bootstrap = await runServer('api_bootstrap');
+    } catch (e) {
+      toast('起動時エラー: ' + (e.message || e));
+    }
+    loadCards();
+  }
+
+  document.addEventListener('DOMContentLoaded', boot);
+})();
+</script>

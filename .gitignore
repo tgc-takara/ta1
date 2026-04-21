@@ -1,0 +1,11 @@
+node_modules/
+.DS_Store
+.env
+.env.*
+*.log
+
+.claude/settings.local.json
+
+# clasp: scriptId を含むので個人環境。テンプレートは .clasp.json.example を参照
+.clasp.json
+.clasprc.json
