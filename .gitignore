@@ -1,0 +1,17 @@
+# Xcode
+# XcodeGen(project.yml)から再生成できるため xcodeproj は追跡しない
+*.xcodeproj
+xcuserdata/
+DerivedData/
+*.xcresult
+build/
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# XcodeGen が生成する Info.plist
+TrackStack/Info.plist
+
+# macOS
+.DS_Store
