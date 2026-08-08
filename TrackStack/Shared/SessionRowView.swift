@@ -13,8 +13,8 @@ struct SessionRowView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.body)
-                if let note = session.note, !note.isEmpty {
-                    Text(note)
+                if let subtitle {
+                    Text(subtitle)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
@@ -42,5 +42,28 @@ struct SessionRowView: View {
         case .study:
             return session.subject?.name ?? "勉強"
         }
+    }
+
+    /// カテゴリ固有の補足行(進捗% / 種目名)。なければメモを表示。
+    private var subtitle: String? {
+        switch session.category {
+        case .reading:
+            if let percent = session.progressPercent {
+                return "進捗 \(percent)%"
+            }
+        case .training:
+            let names = session.exerciseLogs
+                .sorted { $0.order < $1.order }
+                .map(\.exerciseName)
+            if !names.isEmpty {
+                return names.joined(separator: "・")
+            }
+        case .study:
+            break
+        }
+        if let note = session.note, !note.isEmpty {
+            return note
+        }
+        return nil
     }
 }

@@ -2,7 +2,8 @@ import Foundation
 import SwiftData
 
 /// 筋トレ 1 セットの実績(重量 × 回数)
-struct SetRecord: Codable, Hashable {
+struct SetRecord: Codable, Hashable, Identifiable {
+    var id: UUID = UUID()
     var weightKg: Double
     var reps: Int
 }
