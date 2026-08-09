@@ -1,14 +1,35 @@
 import SwiftUI
 import UIKit
 
+/// インターバルタイマーのプリセット秒数(UserDefaults 保存)。
+/// タイマー本体(IntervalTimerSection)と設定画面(IntervalPresetSettingsView)で共有する。
+enum IntervalTimerPresets {
+    static let userDefaultsKey = "intervalTimerPresets"
+    /// 既定値。保存値が未設定/空のときに使う
+    static let defaultValues: [Int] = [30, 60, 90, 120, 180]
+
+    /// 保存済みプリセットを昇順で読み込む。未設定または空配列なら既定値を返す。
+    static func load() -> [Int] {
+        guard let saved = UserDefaults.standard.array(forKey: userDefaultsKey) as? [Int], !saved.isEmpty else {
+            return defaultValues
+        }
+        return saved.sorted()
+    }
+
+    static func save(_ presets: [Int]) {
+        UserDefaults.standard.set(presets, forKey: userDefaultsKey)
+    }
+}
+
 /// トレーニング記録フォームに埋め込む、セット間休憩用のカウントダウンタイマー。
 /// ロジックは ActiveTimer と同じ「時刻差分」方式: 開始時に endDate(終了予定時刻)を
 /// 保持し、残り秒 = endDate - now を毎秒(TimelineView)再計算して表示する。
 /// フォーム保存には関与しない(記録には残さない、あくまで補助UI)。
 struct IntervalTimerSection: View {
     private static let userDefaultsKey = "intervalTimerSeconds"
-    private static let presets: [Int] = [30, 60, 90, 120, 180]
 
+    /// プリセット秒数一覧(設定画面で編集可能。表示直前に再読み込みする)
+    @State private var presets: [Int]
     /// 選択中のインターバル秒数(既定 90 秒。前回値を UserDefaults から復元)
     @State private var selectedSeconds: Int
     /// カウントダウンの終了予定時刻。nil なら停止中
@@ -17,8 +38,10 @@ struct IntervalTimerSection: View {
     @State private var hasFiredHaptic = false
 
     init() {
+        let presets = IntervalTimerPresets.load()
         let saved = UserDefaults.standard.integer(forKey: Self.userDefaultsKey)
-        _selectedSeconds = State(initialValue: Self.presets.contains(saved) ? saved : 90)
+        _presets = State(initialValue: presets)
+        _selectedSeconds = State(initialValue: Self.defaultSelection(presets: presets, preferring: saved))
     }
 
     var body: some View {
@@ -29,6 +52,20 @@ struct IntervalTimerSection: View {
                 idleContent
             }
         }
+        .onAppear {
+            // 設定画面でプリセットが変更されている可能性があるため、表示のたびに再読み込みする
+            presets = IntervalTimerPresets.load()
+            if !presets.contains(selectedSeconds) {
+                selectedSeconds = Self.defaultSelection(presets: presets, preferring: selectedSeconds)
+            }
+        }
+    }
+
+    /// プリセット一覧の中から選択初期値を決める。saved があればそれを、なければ 90 秒に近いものを優先する
+    private static func defaultSelection(presets: [Int], preferring saved: Int) -> Int {
+        if presets.contains(saved) { return saved }
+        if presets.contains(90) { return 90 }
+        return presets.first ?? 90
     }
 
     // MARK: - 停止中(プリセット選択 + 開始)
@@ -36,7 +73,7 @@ struct IntervalTimerSection: View {
     private var idleContent: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
-                ForEach(Self.presets, id: \.self) { seconds in
+                ForEach(presets, id: \.self) { seconds in
                     presetChip(seconds: seconds)
                 }
             }
@@ -58,7 +95,7 @@ struct IntervalTimerSection: View {
             selectedSeconds = seconds
             UserDefaults.standard.set(seconds, forKey: Self.userDefaultsKey)
         } label: {
-            Text(Self.presetLabel(seconds: seconds))
+            Text(Formatters.presetLabel(seconds: seconds))
                 .font(.caption.bold())
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
@@ -67,14 +104,6 @@ struct IntervalTimerSection: View {
                 .clipShape(Capsule())
         }
         .buttonStyle(.plain)
-    }
-
-    private static func presetLabel(seconds: Int) -> String {
-        switch seconds {
-        case 120: return "2分"
-        case 180: return "3分"
-        default: return "\(seconds)秒"
-        }
     }
 
     // MARK: - カウント中 / 終了

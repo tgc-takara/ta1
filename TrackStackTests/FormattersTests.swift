@@ -37,4 +37,11 @@ final class FormattersTests: XCTestCase {
         XCTAssertEqual(Formatters.countdownClock(seconds: 5), "0:05")
         XCTAssertEqual(Formatters.countdownClock(seconds: 600), "10:00")
     }
+
+    func testPresetLabel() {
+        XCTAssertEqual(Formatters.presetLabel(seconds: 45), "45秒")
+        XCTAssertEqual(Formatters.presetLabel(seconds: 120), "2分")
+        XCTAssertEqual(Formatters.presetLabel(seconds: 90), "1分30秒")
+        XCTAssertEqual(Formatters.presetLabel(seconds: 600), "10分")
+    }
 }

@@ -47,4 +47,13 @@ enum Formatters {
         let s = seconds % 60
         return String(format: "%d:%02d", m, s)
     }
+
+    /// インターバルタイマーのプリセット秒数を人が読みやすい形式に整形する。
+    /// 45 → "45秒"、120 → "2分"、90 → "1分30秒"
+    static func presetLabel(seconds: Int) -> String {
+        guard seconds >= 60 else { return "\(seconds)秒" }
+        let m = seconds / 60
+        let s = seconds % 60
+        return s == 0 ? "\(m)分" : "\(m)分\(s)秒"
+    }
 }
