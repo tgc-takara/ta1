@@ -9,6 +9,12 @@ struct SettingsView: View {
                     NavigationLink("読書ジャンル") {
                         BookGenreListView()
                     }
+                    NavigationLink("トレーニングメニュー") {
+                        TrainingMenuManageView()
+                    }
+                    NavigationLink("種目の管理") {
+                        ExerciseManageView()
+                    }
                 }
                 Section("データ") {
                     LabeledContent("エクスポート") {

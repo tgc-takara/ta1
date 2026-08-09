@@ -7,7 +7,6 @@ struct TrainingLibraryView: View {
     @Query(sort: \WorkoutMenu.createdAt, order: .reverse) private var menus: [WorkoutMenu]
     @Query(sort: \Exercise.createdAt) private var exercises: [Exercise]
 
-    @State private var showingMenuForm = false
     @State private var editingMenu: WorkoutMenu?
     @State private var showingExerciseForm = false
 
@@ -16,38 +15,34 @@ struct TrainingLibraryView: View {
             List {
                 Section("メニュー") {
                     if menus.isEmpty {
-                        Text("種目の組み合わせを「メニュー」として保存すると、記録時に 1 タップで呼び出せます")
+                        Text("設定の「トレーニングメニュー」からメニューを作成できます")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                    }
-                    ForEach(menus) { menu in
-                        HStack {
-                            Button {
-                                editingMenu = menu
-                            } label: {
-                                HStack {
-                                    Text(menu.name)
-                                        .foregroundStyle(.primary)
-                                    Spacer()
-                                    Text("\(menu.items.count)種目")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
+                    } else {
+                        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 10) {
+                            ForEach(menus) { menu in
+                                Button {
+                                    editingMenu = menu
+                                } label: {
+                                    VStack(spacing: 4) {
+                                        Image(systemName: "list.bullet.rectangle")
+                                            .font(.title3)
+                                        Text(menu.name)
+                                            .font(.caption2)
+                                            .lineLimit(1)
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 8)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .fill(ActivityCategory.training.color.opacity(0.15))
+                                    )
+                                    .foregroundStyle(ActivityCategory.training.color)
                                 }
+                                .buttonStyle(.borderless)
                             }
-                            .buttonStyle(.borderless)
-                            Button {
-                                context.delete(menu)
-                            } label: {
-                                Image(systemName: "trash")
-                                    .foregroundStyle(.red)
-                            }
-                            .buttonStyle(.borderless)
                         }
-                    }
-                    Button {
-                        showingMenuForm = true
-                    } label: {
-                        Label("メニューを作成", systemImage: "plus")
+                        .padding(.vertical, 4)
                     }
                 }
 
@@ -89,19 +84,6 @@ struct TrainingLibraryView: View {
                                         .foregroundStyle(part.color)
                                         .frame(width: 28)
                                     Text(exercise.name)
-                                    Spacer()
-                                    Button {
-                                        context.delete(exercise)
-                                    } label: {
-                                        Image(systemName: "trash")
-                                            .foregroundStyle(.red)
-                                    }
-                                    .buttonStyle(.borderless)
-                                }
-                            }
-                            .onDelete { offsets in
-                                for index in offsets {
-                                    context.delete(items[index])
                                 }
                             }
                         } header: {
@@ -120,9 +102,6 @@ struct TrainingLibraryView: View {
                     }
                 }
             }
-        }
-        .sheet(isPresented: $showingMenuForm) {
-            MenuFormView()
         }
         .sheet(item: $editingMenu) { menu in
             MenuFormView(menuToEdit: menu)
