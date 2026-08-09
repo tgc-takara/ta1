@@ -25,20 +25,28 @@ struct TrackStackApp: App {
         .modelContainer(container)
     }
 
-    /// プリセット種目のうち未登録の名前だけを投入する(起動ごとに差分を補うため、
-    /// プリセット追加後のアップデートでも既存データに新種目が反映される)
+    /// まだ投入したことのないプリセット種目だけを追加する。
+    /// 投入済みの名前は UserDefaults に記録し、ユーザーが削除した種目を復活させない。
+    /// (プリセット追加後のアップデートでは新種目だけが既存データに反映される)
     private func seedPresetsIfNeeded() {
+        let defaults = UserDefaults.standard
+        let seededKey = "seededPresetNames"
+        let seededNames = Set(defaults.stringArray(forKey: seededKey) ?? [])
+
         let context = ModelContext(container)
         let existing = (try? context.fetch(FetchDescriptor<Exercise>())) ?? []
         let existingNames = Set(existing.map(\.name))
+
         var inserted = false
-        for (name, bodyPart) in Exercise.presets where !existingNames.contains(name) {
+        for (name, bodyPart) in Exercise.presets
+        where !seededNames.contains(name) && !existingNames.contains(name) {
             context.insert(Exercise(name: name, bodyPart: bodyPart))
             inserted = true
         }
         if inserted {
             try? context.save()
         }
+        defaults.set(Array(seededNames.union(Exercise.presets.map(\.0))), forKey: seededKey)
     }
 
     /// 旧2分類(筋トレ/有酸素)時代の kindRaw("strength")を部位分類へ移行する。

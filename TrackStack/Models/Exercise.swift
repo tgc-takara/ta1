@@ -1,4 +1,4 @@
-import Foundation
+import SwiftUI
 import SwiftData
 
 /// 種目の部位分類。筋トレは部位ごと、有酸素は独立した1分類。
@@ -30,7 +30,31 @@ enum BodyPart: String, Codable, CaseIterable, Identifiable {
     /// 入力UIの分岐(セット入力 or 距離・時間入力)
     var isCardio: Bool { self == .cardio }
 
-    var symbolName: String { isCardio ? "figure.run" : "dumbbell" }
+    var symbolName: String {
+        switch self {
+        case .chest: "figure.strengthtraining.traditional"
+        case .shoulders: "figure.strengthtraining.functional"
+        case .biceps: "figure.arms.open"
+        case .triceps: "figure.boxing"
+        case .back: "figure.rower"
+        case .legs: "figure.stair.stepper"
+        case .abs: "figure.core.training"
+        case .cardio: "figure.run"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .chest: .red
+        case .shoulders: .orange
+        case .biceps: .purple
+        case .triceps: .pink
+        case .back: .blue
+        case .legs: .green
+        case .abs: .mint
+        case .cardio: .cyan
+        }
+    }
 }
 
 /// 種目マスタ(ベンチプレス、ランニング等)

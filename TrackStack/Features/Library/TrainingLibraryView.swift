@@ -12,64 +12,112 @@ struct TrainingLibraryView: View {
     @State private var showingExerciseForm = false
 
     var body: some View {
-        List {
-            Section("メニュー") {
-                if menus.isEmpty {
-                    Text("種目の組み合わせを「メニュー」として保存すると、記録時に 1 タップで呼び出せます")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                ForEach(menus) { menu in
-                    Button {
-                        editingMenu = menu
-                    } label: {
+        ScrollViewReader { proxy in
+            List {
+                Section("メニュー") {
+                    if menus.isEmpty {
+                        Text("種目の組み合わせを「メニュー」として保存すると、記録時に 1 タップで呼び出せます")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    ForEach(menus) { menu in
                         HStack {
-                            Text(menu.name)
-                                .foregroundStyle(.primary)
-                            Spacer()
-                            Text("\(menu.items.count)種目")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-                .onDelete { offsets in
-                    for index in offsets {
-                        context.delete(menus[index])
-                    }
-                }
-                Button {
-                    showingMenuForm = true
-                } label: {
-                    Label("メニューを作成", systemImage: "plus")
-                }
-            }
-
-            ForEach(BodyPart.allCases) { part in
-                let items = exercises.filter { $0.bodyPart == part }
-                if !items.isEmpty {
-                    Section("種目: \(part.label)") {
-                        ForEach(items) { exercise in
-                            HStack {
-                                Image(systemName: part.symbolName)
-                                    .foregroundStyle(ActivityCategory.training.color)
-                                Text(exercise.name)
+                            Button {
+                                editingMenu = menu
+                            } label: {
+                                HStack {
+                                    Text(menu.name)
+                                        .foregroundStyle(.primary)
+                                    Spacer()
+                                    Text("\(menu.items.count)種目")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
                             }
-                        }
-                        .onDelete { offsets in
-                            for index in offsets {
-                                context.delete(items[index])
+                            .buttonStyle(.borderless)
+                            Button {
+                                context.delete(menu)
+                            } label: {
+                                Image(systemName: "trash")
+                                    .foregroundStyle(.red)
                             }
+                            .buttonStyle(.borderless)
+                        }
+                    }
+                    Button {
+                        showingMenuForm = true
+                    } label: {
+                        Label("メニューを作成", systemImage: "plus")
+                    }
+                }
+
+                Section("部位へジャンプ") {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 10) {
+                        ForEach(BodyPart.allCases) { part in
+                            Button {
+                                withAnimation {
+                                    proxy.scrollTo(part, anchor: .top)
+                                }
+                            } label: {
+                                VStack(spacing: 4) {
+                                    Image(systemName: part.symbolName)
+                                        .font(.title3)
+                                    Text(part.label)
+                                        .font(.caption2)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 8)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(part.color.opacity(0.15))
+                                )
+                                .foregroundStyle(part.color)
+                            }
+                            .buttonStyle(.borderless)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+
+                ForEach(BodyPart.allCases) { part in
+                    let items = exercises.filter { $0.bodyPart == part }
+                    if !items.isEmpty {
+                        Section {
+                            ForEach(items) { exercise in
+                                HStack {
+                                    Image(systemName: part.symbolName)
+                                        .foregroundStyle(part.color)
+                                        .frame(width: 28)
+                                    Text(exercise.name)
+                                    Spacer()
+                                    Button {
+                                        context.delete(exercise)
+                                    } label: {
+                                        Image(systemName: "trash")
+                                            .foregroundStyle(.red)
+                                    }
+                                    .buttonStyle(.borderless)
+                                }
+                            }
+                            .onDelete { offsets in
+                                for index in offsets {
+                                    context.delete(items[index])
+                                }
+                            }
+                        } header: {
+                            Label("種目: \(part.label)", systemImage: part.symbolName)
+                                .foregroundStyle(part.color)
+                                .id(part)
                         }
                     }
                 }
-            }
 
-            Section {
-                Button {
-                    showingExerciseForm = true
-                } label: {
-                    Label("種目を追加", systemImage: "plus")
+                Section {
+                    Button {
+                        showingExerciseForm = true
+                    } label: {
+                        Label("種目を追加", systemImage: "plus")
+                    }
                 }
             }
         }
