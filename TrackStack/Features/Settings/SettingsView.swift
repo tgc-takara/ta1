@@ -15,6 +15,9 @@ struct SettingsView: View {
                     NavigationLink("種目の管理") {
                         ExerciseManageView()
                     }
+                    NavigationLink("勉強科目") {
+                        SubjectManageView()
+                    }
                     NavigationLink("インターバルタイマー") {
                         IntervalPresetSettingsView()
                     }
