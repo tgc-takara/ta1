@@ -31,11 +31,16 @@ struct SessionFormView: View {
     @State private var menuName: String?
     @State private var showingExercisePicker = false
 
-    init(sessionToEdit: Session? = nil) {
+    init(
+        sessionToEdit: Session? = nil,
+        initialCategory: ActivityCategory? = nil,
+        initialStartedAt: Date? = nil,
+        initialDurationMinutes: Int? = nil
+    ) {
         self.sessionToEdit = sessionToEdit
-        _category = State(initialValue: sessionToEdit?.category ?? .study)
-        _startedAt = State(initialValue: sessionToEdit?.startedAt ?? Date())
-        _durationMinutes = State(initialValue: sessionToEdit?.durationMinutes ?? 30)
+        _category = State(initialValue: sessionToEdit?.category ?? initialCategory ?? .study)
+        _startedAt = State(initialValue: sessionToEdit?.startedAt ?? initialStartedAt ?? Date())
+        _durationMinutes = State(initialValue: sessionToEdit?.durationMinutes ?? initialDurationMinutes ?? 30)
         _note = State(initialValue: sessionToEdit?.note ?? "")
         _selectedBook = State(initialValue: sessionToEdit?.book)
         _progressPercent = State(initialValue: Double(

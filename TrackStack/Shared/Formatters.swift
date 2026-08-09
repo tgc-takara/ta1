@@ -31,4 +31,12 @@ enum Formatters {
         let end = start.addingTimeInterval(TimeInterval(minutes * 60))
         return "\(time(start))〜\(time(end))"
     }
+
+    /// 秒数を「H:MM:SS」形式に整形する(タイマー表示用)
+    static func elapsedClock(seconds: Int) -> String {
+        let h = seconds / 3600
+        let m = (seconds % 3600) / 60
+        let s = seconds % 60
+        return String(format: "%d:%02d:%02d", h, m, s)
+    }
 }

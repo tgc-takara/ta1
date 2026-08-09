@@ -33,12 +33,11 @@ xcodebuild -scheme TrackStack -destination 'platform=iOS Simulator,name=iPhone 1
 - 集計ロジックは `Shared/StatsCalculator.swift` に純粋関数で分離(ユニットテスト対象)
 - UI 文言は日本語
 
-## 開発状況(2026-08-08 時点)
+## 開発状況(2026-08-09 時点)
 
-- 完了: プランニング / M1(基盤) / M2(カテゴリ固有機能)
-- **注意: M1・M2 は Linux 環境で書かれておりコンパイル未検証。最初にビルドを通すこと**
-- 次: M3(タイマー記録)→ M4(グラフ・カレンダー)→ M5(エクスポート)→ M6(仕上げ)
-  - M3 のタイマーは「開始時刻との差分」方式でバックグラウンド実行に依存しない実装にする(PLANNING.md §5)
+- 完了: プランニング / M1(基盤) / M2(カテゴリ固有機能) / M3(タイマー記録)
+- 次: M4(グラフ・カレンダー)→ M5(エクスポート)→ M6(仕上げ)
+  - M3 のタイマーは `Features/Timer/ActiveTimer.swift` に「開始時刻との差分」方式で実装済み(PLANNING.md §5)。状態は UserDefaults(キー `activeTimerState`)に永続化し、アプリ再起動後もダッシュボードの計測中バナーから復元できる
 
 ## ブランチ運用
 

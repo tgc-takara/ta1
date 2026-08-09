@@ -4,6 +4,17 @@ import SwiftData
 struct DashboardView: View {
     @Query(sort: \Session.startedAt, order: .reverse) private var sessions: [Session]
     @State private var showingRecordSheet = false
+    @State private var activeTimer = ActiveTimer()
+    @State private var showingTimerSheet = false
+    @State private var pendingTimerResult: PendingTimerResult?
+
+    /// タイマー終了後、記録フォームへプリフィルする値。Identifiable にして sheet(item:) で扱う。
+    private struct PendingTimerResult: Identifiable {
+        let id = UUID()
+        let category: ActivityCategory
+        let startedAt: Date
+        let durationMinutes: Int
+    }
 
     private var todaySessions: [Session] {
         StatsCalculator.sessions(sessions, on: Date())
@@ -24,6 +35,9 @@ struct DashboardView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
+                    if activeTimer.isRunning {
+                        timerBanner
+                    }
                     todayCard
                     weekCard
                     if !todaySessions.isEmpty {
@@ -34,6 +48,20 @@ struct DashboardView: View {
             }
             .navigationTitle("TrackStack")
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Menu {
+                        ForEach(ActivityCategory.allCases) { category in
+                            Button {
+                                activeTimer.start(category: category)
+                                showingTimerSheet = true
+                            } label: {
+                                Label(category.label, systemImage: category.symbolName)
+                            }
+                        }
+                    } label: {
+                        Label("タイマー開始", systemImage: "timer")
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         showingRecordSheet = true
@@ -46,7 +74,50 @@ struct DashboardView: View {
             .sheet(isPresented: $showingRecordSheet) {
                 SessionFormView()
             }
+            .fullScreenCover(isPresented: $showingTimerSheet) {
+                TimerView(activeTimer: activeTimer) { category, startedAt, durationMinutes in
+                    pendingTimerResult = PendingTimerResult(
+                        category: category,
+                        startedAt: startedAt,
+                        durationMinutes: durationMinutes
+                    )
+                }
+            }
+            .sheet(item: $pendingTimerResult) { result in
+                SessionFormView(
+                    initialCategory: result.category,
+                    initialStartedAt: result.startedAt,
+                    initialDurationMinutes: result.durationMinutes
+                )
+            }
         }
+    }
+
+    /// 計測中バナー。タップするとタイマー画面を再表示する(アプリ再起動後の復元経路)。
+    private var timerBanner: some View {
+        Button {
+            showingTimerSheet = true
+        } label: {
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                if let state = activeTimer.state, let category = activeTimer.category {
+                    let elapsed = ActiveTimer.elapsedSeconds(now: context.date, state: state)
+                    HStack {
+                        Image(systemName: category.symbolName)
+                            .foregroundStyle(category.color)
+                        Text("計測中: \(category.label)")
+                            .font(.subheadline.bold())
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        Text(Formatters.elapsedClock(seconds: elapsed))
+                            .font(.subheadline.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding()
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                }
+            }
+        }
+        .buttonStyle(.plain)
     }
 
     private var todayCard: some View {
