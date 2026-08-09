@@ -33,6 +33,10 @@ final class Book {
     var rating: Int?
     var review: String?
     var createdAt: Date
+    /// 読み始めた日(任意)。ユーザーが未設定なら nil。
+    var startedOn: Date?
+    /// 読み終わった日(任意)。読了時に未設定なら自動で当日を設定する。
+    var finishedOn: Date?
 
     @Relationship(deleteRule: .nullify, inverse: \Session.book)
     var sessions: [Session]
@@ -50,6 +54,8 @@ final class Book {
         self.statusRaw = status.rawValue
         self.progressPercent = 0
         self.createdAt = Date()
+        self.startedOn = nil
+        self.finishedOn = nil
         self.sessions = []
     }
 }

@@ -16,6 +16,7 @@ struct TrackStackApp: App {
         }
         migrateLegacyKindsIfNeeded()
         seedPresetsIfNeeded()
+        seedSubjectPresetsIfNeeded()
     }
 
     var body: some Scene {
@@ -47,6 +48,29 @@ struct TrackStackApp: App {
             try? context.save()
         }
         defaults.set(Array(seededNames.union(Exercise.presets.map(\.0))), forKey: seededKey)
+    }
+
+    /// まだ投入したことのないプリセット科目(中小企業診断士7科目)だけを追加する。
+    /// 投入済みの名前は UserDefaults に記録し、ユーザーが削除した科目を復活させない。
+    private func seedSubjectPresetsIfNeeded() {
+        let defaults = UserDefaults.standard
+        let seededKey = "seededSubjectNames"
+        let seededNames = Set(defaults.stringArray(forKey: seededKey) ?? [])
+
+        let context = ModelContext(container)
+        let existing = (try? context.fetch(FetchDescriptor<Subject>())) ?? []
+        let existingNames = Set(existing.map(\.name))
+
+        var inserted = false
+        for name in Subject.presets
+        where !seededNames.contains(name) && !existingNames.contains(name) {
+            context.insert(Subject(name: name))
+            inserted = true
+        }
+        if inserted {
+            try? context.save()
+        }
+        defaults.set(Array(seededNames.union(Subject.presets)), forKey: seededKey)
     }
 
     /// 旧2分類(筋トレ/有酸素)時代の kindRaw("strength")を部位分類へ移行する。

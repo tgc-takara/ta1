@@ -109,6 +109,12 @@ struct BookshelfView: View {
 struct BookRowView: View {
     let book: Book
 
+    private static let finishedDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "M/d"
+        return formatter
+    }()
+
     var body: some View {
         HStack(spacing: 12) {
             coverThumbnail
@@ -133,6 +139,11 @@ struct BookRowView: View {
                                         Capsule().fill(ActivityCategory.reading.color.opacity(0.15))
                                     )
                                     .foregroundStyle(ActivityCategory.reading.color)
+                            }
+                            if book.status == .finished, let finishedOn = book.finishedOn {
+                                Text("\(Self.finishedDateFormatter.string(from: finishedOn))読了")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
                             }
                         }
                     }
@@ -184,6 +195,10 @@ struct BookFormView: View {
     @State private var review: String
     @State private var coverImageData: Data?
     @State private var photoItem: PhotosPickerItem?
+    @State private var startedOnEnabled: Bool
+    @State private var startedOn: Date
+    @State private var finishedOnEnabled: Bool
+    @State private var finishedOn: Date
 
     init(bookToEdit: Book? = nil) {
         self.bookToEdit = bookToEdit
@@ -194,6 +209,10 @@ struct BookFormView: View {
         _rating = State(initialValue: bookToEdit?.rating ?? 3)
         _review = State(initialValue: bookToEdit?.review ?? "")
         _coverImageData = State(initialValue: bookToEdit?.coverImageData)
+        _startedOnEnabled = State(initialValue: bookToEdit?.startedOn != nil)
+        _startedOn = State(initialValue: bookToEdit?.startedOn ?? Date())
+        _finishedOnEnabled = State(initialValue: bookToEdit?.finishedOn != nil)
+        _finishedOn = State(initialValue: bookToEdit?.finishedOn ?? Date())
     }
 
     private var trimmedTitle: String {
@@ -249,15 +268,29 @@ struct BookFormView: View {
                     }
                 }
 
+                Section("日付") {
+                    Toggle("読み始めた日を記録", isOn: $startedOnEnabled)
+                    if startedOnEnabled {
+                        DatePicker("読み始めた日", selection: $startedOn, displayedComponents: .date)
+                    }
+                    Toggle("読み終わった日を記録", isOn: $finishedOnEnabled)
+                    if finishedOnEnabled {
+                        DatePicker("読み終わった日", selection: $finishedOn, displayedComponents: .date)
+                    }
+                }
+
+                Section("読書メモ") {
+                    TextField("メモ(任意)", text: $review, axis: .vertical)
+                        .lineLimit(3...6)
+                }
+
                 if status == .finished {
-                    Section("読了メモ") {
+                    Section("評価") {
                         Picker("評価", selection: $rating) {
                             ForEach(1...5, id: \.self) { value in
                                 Text(String(repeating: "★", count: value)).tag(value)
                             }
                         }
-                        TextField("感想(任意)", text: $review, axis: .vertical)
-                            .lineLimit(3...6)
                     }
                 }
             }
@@ -319,14 +352,24 @@ struct BookFormView: View {
         }
         book.genreName = genreName
         book.coverImageData = coverImageData
+        book.review = trimmedReview.isEmpty ? nil : trimmedReview
 
         if status == .finished {
             book.rating = rating
-            book.review = trimmedReview.isEmpty ? nil : trimmedReview
             book.progressPercent = 100
         } else {
             book.rating = nil
-            book.review = nil
+        }
+
+        book.startedOn = startedOnEnabled ? startedOn : nil
+        book.finishedOn = finishedOnEnabled ? finishedOn : nil
+
+        // ステータス保存時、対応する日付が未設定なら自動で当日を設定する(明示設定があれば優先)
+        if status == .finished && book.finishedOn == nil {
+            book.finishedOn = Date()
+        }
+        if status == .reading && book.startedOn == nil {
+            book.startedOn = Date()
         }
 
         dismiss()
