@@ -76,7 +76,7 @@ struct SessionFormView: View {
             .sheet(isPresented: $showingExercisePicker) {
                 ExercisePickerView { exercise in
                     exerciseDrafts.append(
-                        ExerciseDraft(name: exercise.name, kind: exercise.kind)
+                        ExerciseDraft(name: exercise.name, bodyPart: exercise.bodyPart)
                     )
                 }
             }

@@ -10,7 +10,7 @@ enum BookStatus: String, Codable, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .wantToRead: "読みたい"
+        case .wantToRead: "積読"
         case .reading: "読書中"
         case .finished: "読了"
         }
@@ -22,6 +22,11 @@ final class Book {
     var id: UUID
     var title: String
     var author: String?
+    /// ジャンル名のスナップショット(設定のジャンルマスタから選択。マスタ削除後も本側の表示は残る)
+    var genreName: String?
+    /// 表紙写真(JPEG)。サイズが大きいので外部ストレージに逃がす。
+    @Attribute(.externalStorage)
+    var coverImageData: Data?
     var statusRaw: String
     /// 最新の進捗(0–100)。セッション記録時に更新される。
     var progressPercent: Int
@@ -37,10 +42,11 @@ final class Book {
         set { statusRaw = newValue.rawValue }
     }
 
-    init(title: String, author: String? = nil, status: BookStatus = .wantToRead) {
+    init(title: String, author: String? = nil, genreName: String? = nil, status: BookStatus = .wantToRead) {
         self.id = UUID()
         self.title = title
         self.author = author
+        self.genreName = genreName
         self.statusRaw = status.rawValue
         self.progressPercent = 0
         self.createdAt = Date()

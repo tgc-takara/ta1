@@ -7,22 +7,22 @@ import Foundation
 struct ExerciseDraft: Identifiable, Hashable {
     let id = UUID()
     var name: String
-    var kind: ExerciseKind
+    var bodyPart: BodyPart
     var sets: [SetRecord]
     var distanceKm: Double
     var durationMinutes: Int
 
-    init(name: String, kind: ExerciseKind) {
+    init(name: String, bodyPart: BodyPart) {
         self.name = name
-        self.kind = kind
-        self.sets = kind == .strength ? [SetRecord(weightKg: 20, reps: 10)] : []
+        self.bodyPart = bodyPart
+        self.sets = bodyPart.isCardio ? [] : [SetRecord(weightKg: 20, reps: 10)]
         self.distanceKm = 0
         self.durationMinutes = 0
     }
 
     init(log: ExerciseLog) {
         self.name = log.exerciseName
-        self.kind = log.kind
+        self.bodyPart = log.bodyPart
         self.sets = log.sets
         self.distanceKm = log.distanceKm ?? 0
         self.durationMinutes = log.durationMinutes ?? 0
@@ -30,19 +30,19 @@ struct ExerciseDraft: Identifiable, Hashable {
 
     init(item: MenuItem) {
         self.name = item.exerciseName
-        self.kind = item.kind
+        self.bodyPart = item.bodyPart
         self.sets = item.defaultSets
         self.distanceKm = item.defaultDistanceKm ?? 0
         self.durationMinutes = item.defaultDurationMinutes ?? 0
     }
 
     func makeLog(order: Int) -> ExerciseLog {
-        let log = ExerciseLog(exerciseName: name, kind: kind, order: order)
-        if kind == .strength {
-            log.sets = sets
-        } else {
+        let log = ExerciseLog(exerciseName: name, bodyPart: bodyPart, order: order)
+        if bodyPart.isCardio {
             log.distanceKm = distanceKm > 0 ? distanceKm : nil
             log.durationMinutes = durationMinutes > 0 ? durationMinutes : nil
+        } else {
+            log.sets = sets
         }
         return log
     }
@@ -50,10 +50,10 @@ struct ExerciseDraft: Identifiable, Hashable {
     func makeMenuItem() -> MenuItem {
         MenuItem(
             exerciseName: name,
-            kindRaw: kind.rawValue,
-            defaultSets: kind == .strength ? sets : [],
-            defaultDistanceKm: kind == .cardio && distanceKm > 0 ? distanceKm : nil,
-            defaultDurationMinutes: kind == .cardio && durationMinutes > 0 ? durationMinutes : nil
+            kindRaw: bodyPart.rawValue,
+            defaultSets: bodyPart.isCardio ? [] : sets,
+            defaultDistanceKm: bodyPart.isCardio && distanceKm > 0 ? distanceKm : nil,
+            defaultDurationMinutes: bodyPart.isCardio && durationMinutes > 0 ? durationMinutes : nil
         )
     }
 }

@@ -26,7 +26,7 @@ struct SessionRowView: View {
             VStack(alignment: .trailing, spacing: 2) {
                 Text(Formatters.duration(minutes: session.durationMinutes))
                     .font(.subheadline.bold())
-                Text(Formatters.time(session.startedAt))
+                Text(Formatters.timeRange(start: session.startedAt, minutes: session.durationMinutes))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

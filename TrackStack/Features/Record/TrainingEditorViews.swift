@@ -8,20 +8,20 @@ struct ExerciseDraftSections: View {
     var body: some View {
         ForEach($drafts) { $draft in
             Section {
-                if draft.kind == .strength {
-                    SetsEditorView(sets: $draft.sets)
-                } else {
+                if draft.bodyPart.isCardio {
                     CardioFieldsView(
                         distanceKm: $draft.distanceKm,
                         durationMinutes: $draft.durationMinutes
                     )
+                } else {
+                    SetsEditorView(sets: $draft.sets)
                 }
             } header: {
                 HStack {
-                    Label(
-                        draft.name,
-                        systemImage: draft.kind == .strength ? "dumbbell" : "figure.run"
-                    )
+                    Label(draft.name, systemImage: draft.bodyPart.symbolName)
+                    Text(draft.bodyPart.label)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                     Spacer()
                     Button {
                         drafts.removeAll { $0.id == draft.id }
@@ -36,18 +36,38 @@ struct ExerciseDraftSections: View {
     }
 }
 
-/// 筋トレのセット(重量 × 回数)編集
+/// 筋トレのセット(重量 × 回数)編集。
+/// 両手/片手の切り替えと、マイナス重量(加重アシストで負荷を軽くする種目)に対応。
 struct SetsEditorView: View {
     @Binding var sets: [SetRecord]
 
     var body: some View {
         ForEach($sets) { $set in
             let index = sets.firstIndex(where: { $0.id == set.id }) ?? 0
-            HStack {
+            HStack(spacing: 6) {
                 Text("セット\(index + 1)")
                     .foregroundStyle(.secondary)
                     .font(.subheadline)
+
+                Button(set.isSingleArm ? "片手" : "両手") {
+                    set.isSingleArm.toggle()
+                }
+                .buttonStyle(.bordered)
+                .font(.caption)
+
                 Spacer()
+
+                // 重量の符号切り替え(マイナス = 加重で負荷を軽くする)
+                Button {
+                    if set.weightKg != 0 {
+                        set.weightKg = -set.weightKg
+                    }
+                } label: {
+                    Image(systemName: set.weightKg < 0 ? "minus.circle.fill" : "plusminus.circle")
+                        .foregroundStyle(set.weightKg < 0 ? Color.orange : Color.secondary)
+                }
+                .buttonStyle(.borderless)
+
                 TextField("kg", value: $set.weightKg, format: .number)
                     .keyboardType(.decimalPad)
                     .multilineTextAlignment(.trailing)
@@ -66,7 +86,7 @@ struct SetsEditorView: View {
 
         Button {
             let last = sets.last ?? SetRecord(weightKg: 20, reps: 10)
-            sets.append(SetRecord(weightKg: last.weightKg, reps: last.reps))
+            sets.append(SetRecord(weightKg: last.weightKg, reps: last.reps, isSingleArm: last.isSingleArm))
         } label: {
             Label("セットを追加", systemImage: "plus")
         }
@@ -103,7 +123,7 @@ struct CardioFieldsView: View {
     }
 }
 
-/// 種目選択シート。既存種目からの選択と、その場での新規追加に対応。
+/// 種目選択シート。既存種目からの選択と、その場での新規追加に対応。部位ごとにセクション表示する。
 struct ExercisePickerView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
@@ -112,7 +132,7 @@ struct ExercisePickerView: View {
     let onSelect: (Exercise) -> Void
 
     @State private var newName = ""
-    @State private var newKind: ExerciseKind = .strength
+    @State private var newBodyPart: BodyPart = .chest
 
     private var trimmedNewName: String {
         newName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -121,10 +141,10 @@ struct ExercisePickerView: View {
     var body: some View {
         NavigationStack {
             List {
-                ForEach(ExerciseKind.allCases) { kind in
-                    let items = exercises.filter { $0.kind == kind }
+                ForEach(BodyPart.allCases) { part in
+                    let items = exercises.filter { $0.bodyPart == part }
                     if !items.isEmpty {
-                        Section(kind.label) {
+                        Section(part.label) {
                             ForEach(items) { exercise in
                                 Button {
                                     onSelect(exercise)
@@ -140,14 +160,13 @@ struct ExercisePickerView: View {
 
                 Section("新しい種目") {
                     TextField("種目名", text: $newName)
-                    Picker("種類", selection: $newKind) {
-                        ForEach(ExerciseKind.allCases) { kind in
-                            Text(kind.label).tag(kind)
+                    Picker("部位", selection: $newBodyPart) {
+                        ForEach(BodyPart.allCases) { part in
+                            Text(part.label).tag(part)
                         }
                     }
-                    .pickerStyle(.segmented)
                     Button("追加して選択") {
-                        let exercise = Exercise(name: trimmedNewName, kind: newKind)
+                        let exercise = Exercise(name: trimmedNewName, bodyPart: newBodyPart)
                         context.insert(exercise)
                         onSelect(exercise)
                         dismiss()

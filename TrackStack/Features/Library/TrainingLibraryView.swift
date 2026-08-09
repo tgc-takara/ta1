@@ -45,23 +45,27 @@ struct TrainingLibraryView: View {
                 }
             }
 
-            Section("種目") {
-                ForEach(exercises) { exercise in
-                    HStack {
-                        Image(systemName: exercise.kind == .strength ? "dumbbell" : "figure.run")
-                            .foregroundStyle(ActivityCategory.training.color)
-                        Text(exercise.name)
-                        Spacer()
-                        Text(exercise.kind.label)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+            ForEach(BodyPart.allCases) { part in
+                let items = exercises.filter { $0.bodyPart == part }
+                if !items.isEmpty {
+                    Section("種目: \(part.label)") {
+                        ForEach(items) { exercise in
+                            HStack {
+                                Image(systemName: part.symbolName)
+                                    .foregroundStyle(ActivityCategory.training.color)
+                                Text(exercise.name)
+                            }
+                        }
+                        .onDelete { offsets in
+                            for index in offsets {
+                                context.delete(items[index])
+                            }
+                        }
                     }
                 }
-                .onDelete { offsets in
-                    for index in offsets {
-                        context.delete(exercises[index])
-                    }
-                }
+            }
+
+            Section {
                 Button {
                     showingExerciseForm = true
                 } label: {
@@ -87,7 +91,7 @@ struct ExerciseFormView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var name = ""
-    @State private var kind: ExerciseKind = .strength
+    @State private var bodyPart: BodyPart = .chest
 
     private var trimmedName: String {
         name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -97,12 +101,11 @@ struct ExerciseFormView: View {
         NavigationStack {
             Form {
                 TextField("種目名(例: ショルダープレス)", text: $name)
-                Picker("種類", selection: $kind) {
-                    ForEach(ExerciseKind.allCases) { kind in
-                        Text(kind.label).tag(kind)
+                Picker("部位", selection: $bodyPart) {
+                    ForEach(BodyPart.allCases) { part in
+                        Text(part.label).tag(part)
                     }
                 }
-                .pickerStyle(.segmented)
             }
             .navigationTitle("種目を追加")
             .navigationBarTitleDisplayMode(.inline)
@@ -112,7 +115,7 @@ struct ExerciseFormView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("保存") {
-                        context.insert(Exercise(name: trimmedName, kind: kind))
+                        context.insert(Exercise(name: trimmedName, bodyPart: bodyPart))
                         dismiss()
                     }
                     .disabled(trimmedName.isEmpty)
@@ -174,7 +177,7 @@ struct MenuFormView: View {
             }
             .sheet(isPresented: $showingExercisePicker) {
                 ExercisePickerView { exercise in
-                    drafts.append(ExerciseDraft(name: exercise.name, kind: exercise.kind))
+                    drafts.append(ExerciseDraft(name: exercise.name, bodyPart: exercise.bodyPart))
                 }
             }
         }

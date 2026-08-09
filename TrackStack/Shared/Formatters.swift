@@ -25,4 +25,10 @@ enum Formatters {
         formatter.dateFormat = "H:mm"
         return formatter.string(from: date)
     }
+
+    /// 開始時刻と所要分から「22:58〜23:13」形式の時間帯を返す
+    static func timeRange(start: Date, minutes: Int) -> String {
+        let end = start.addingTimeInterval(TimeInterval(minutes * 60))
+        return "\(time(start))〜\(time(end))"
+    }
 }

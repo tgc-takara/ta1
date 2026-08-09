@@ -10,8 +10,8 @@ struct MenuItem: Codable, Hashable {
     var defaultDistanceKm: Double?
     var defaultDurationMinutes: Int?
 
-    var kind: ExerciseKind {
-        ExerciseKind(rawValue: kindRaw) ?? .strength
+    var bodyPart: BodyPart {
+        BodyPart(rawValue: kindRaw) ?? .chest
     }
 }
 
