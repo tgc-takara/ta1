@@ -31,4 +31,10 @@ final class FormattersTests: XCTestCase {
             "23:50〜0:20"
         )
     }
+
+    func testCountdownClock() {
+        XCTAssertEqual(Formatters.countdownClock(seconds: 90), "1:30")
+        XCTAssertEqual(Formatters.countdownClock(seconds: 5), "0:05")
+        XCTAssertEqual(Formatters.countdownClock(seconds: 600), "10:00")
+    }
 }

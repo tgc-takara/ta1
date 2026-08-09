@@ -177,6 +177,8 @@ struct SessionFormView: View {
             }
         }
 
+        IntervalTimerSection()
+
         ExerciseDraftSections(drafts: $exerciseDrafts)
 
         Section {

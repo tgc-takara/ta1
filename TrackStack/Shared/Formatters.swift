@@ -39,4 +39,12 @@ enum Formatters {
         let s = seconds % 60
         return String(format: "%d:%02d:%02d", h, m, s)
     }
+
+    /// 秒数を「M:SS」形式に整形する(インターバルタイマーのカウントダウン表示用)
+    /// 90 → "1:30"、5 → "0:05"
+    static func countdownClock(seconds: Int) -> String {
+        let m = seconds / 60
+        let s = seconds % 60
+        return String(format: "%d:%02d", m, s)
+    }
 }
