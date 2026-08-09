@@ -25,15 +25,20 @@ struct TrackStackApp: App {
         .modelContainer(container)
     }
 
-    /// 初回起動時にプリセット種目を投入する
+    /// プリセット種目のうち未登録の名前だけを投入する(起動ごとに差分を補うため、
+    /// プリセット追加後のアップデートでも既存データに新種目が反映される)
     private func seedPresetsIfNeeded() {
         let context = ModelContext(container)
-        let count = (try? context.fetchCount(FetchDescriptor<Exercise>())) ?? 0
-        guard count == 0 else { return }
-        for (name, bodyPart) in Exercise.presets {
+        let existing = (try? context.fetch(FetchDescriptor<Exercise>())) ?? []
+        let existingNames = Set(existing.map(\.name))
+        var inserted = false
+        for (name, bodyPart) in Exercise.presets where !existingNames.contains(name) {
             context.insert(Exercise(name: name, bodyPart: bodyPart))
+            inserted = true
         }
-        try? context.save()
+        if inserted {
+            try? context.save()
+        }
     }
 
     /// 旧2分類(筋トレ/有酸素)時代の kindRaw("strength")を部位分類へ移行する。
