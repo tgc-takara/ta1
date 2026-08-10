@@ -57,4 +57,82 @@ final class StatsCalculatorTests: XCTestCase {
         XCTAssertEqual(result.count, 1)
         XCTAssertEqual(result.first?.id, todaySession.id)
     }
+
+    // MARK: dailyMinutes
+
+    func testDailyMinutesReturnsSevenDaysEndingOnGivenDate() {
+        let result = StatsCalculator.dailyMinutes([], days: 7, endingOn: Date())
+        XCTAssertEqual(result.count, 7)
+        XCTAssertEqual(result.last?.date, calendar.startOfDay(for: Date()))
+        XCTAssertEqual(result.first?.date, day(-6))
+    }
+
+    func testDailyMinutesFillsMissingDaysWithZero() {
+        let sessions = [Session(category: .study, startedAt: day(-1), durationMinutes: 30)]
+        let result = StatsCalculator.dailyMinutes(sessions, days: 7, endingOn: Date())
+        // 記録がない日は minutesByCategory が空(合計0)であること
+        let today = result.last!
+        XCTAssertTrue(today.minutesByCategory.isEmpty || today.minutesByCategory.values.allSatisfy { $0 == 0 })
+    }
+
+    func testDailyMinutesAggregatesByCategory() {
+        let sessions = [
+            Session(category: .study, startedAt: Date(), durationMinutes: 30),
+            Session(category: .study, startedAt: Date(), durationMinutes: 15),
+            Session(category: .reading, startedAt: Date(), durationMinutes: 20),
+        ]
+        let result = StatsCalculator.dailyMinutes(sessions, days: 7, endingOn: Date())
+        let today = result.last!
+        XCTAssertEqual(today.minutesByCategory[.study], 45)
+        XCTAssertEqual(today.minutesByCategory[.reading], 20)
+    }
+
+    // MARK: minutesByDay
+
+    func testMinutesByDaySumsWithinMonth() {
+        let now = Date()
+        let sessions = [
+            Session(category: .study, startedAt: now, durationMinutes: 30),
+            Session(category: .reading, startedAt: now, durationMinutes: 20),
+        ]
+        let result = StatsCalculator.minutesByDay(sessions, in: now)
+        XCTAssertEqual(result[calendar.startOfDay(for: now)], 50)
+    }
+
+    func testMinutesByDayExcludesSessionsOutsideMonth() {
+        let now = Date()
+        guard let lastMonth = calendar.date(byAdding: .month, value: -1, to: now) else {
+            return XCTFail("date calculation failed")
+        }
+        let sessions = [
+            Session(category: .study, startedAt: now, durationMinutes: 30),
+            Session(category: .study, startedAt: lastMonth, durationMinutes: 99),
+        ]
+        let result = StatsCalculator.minutesByDay(sessions, in: now)
+        XCTAssertEqual(result.count, 1)
+        XCTAssertEqual(result[calendar.startOfDay(for: now)], 30)
+    }
+
+    // MARK: dominantCategoryByDay
+
+    func testDominantCategoryByDayPicksLargestCategory() {
+        let now = Date()
+        let sessions = [
+            Session(category: .study, startedAt: now, durationMinutes: 10),
+            Session(category: .reading, startedAt: now, durationMinutes: 50),
+        ]
+        let result = StatsCalculator.dominantCategoryByDay(sessions, in: now)
+        XCTAssertEqual(result[calendar.startOfDay(for: now)], .reading)
+    }
+
+    func testDominantCategoryByDayIsDeterministicOnTie() {
+        let now = Date()
+        // reading と training が同値の場合、ActivityCategory.allCases の順で reading が先勝ち
+        let sessions = [
+            Session(category: .training, startedAt: now, durationMinutes: 30),
+            Session(category: .reading, startedAt: now, durationMinutes: 30),
+        ]
+        let result = StatsCalculator.dominantCategoryByDay(sessions, in: now)
+        XCTAssertEqual(result[calendar.startOfDay(for: now)], .reading)
+    }
 }

@@ -5,7 +5,7 @@
 
 ## 技術スタック
 
-- iOS 17+ / Swift / SwiftUI / SwiftData / Swift Charts(M4 で導入予定)
+- iOS 17+ / Swift / SwiftUI / SwiftData / Swift Charts(M4 で導入済み)
 - 個人利用のみ(App Store 公開なし)。ローカル完結、iCloud 同期なし
 - エクスポート(JSON / CSV / Obsidian Markdown)が MVP の柱。形式仕様は PLANNING.md §3.5
 
@@ -33,11 +33,12 @@ xcodebuild -scheme TrackStack -destination 'platform=iOS Simulator,name=iPhone 1
 - 集計ロジックは `Shared/StatsCalculator.swift` に純粋関数で分離(ユニットテスト対象)
 - UI 文言は日本語
 
-## 開発状況(2026-08-09 時点)
+## 開発状況(2026-08-10 時点)
 
-- 完了: プランニング / M1(基盤) / M2(カテゴリ固有機能) / M3(タイマー記録)
-- 次: M4(グラフ・カレンダー)→ M5(エクスポート)→ M6(仕上げ)
+- 完了: プランニング / M1(基盤) / M2(カテゴリ固有機能) / M3(タイマー記録) / M4(可視化)
+- 次: M5(エクスポート)→ M6(仕上げ)
   - M3 のタイマーは `Features/Timer/ActiveTimer.swift` に「開始時刻との差分」方式で実装済み(PLANNING.md §5)。状態は UserDefaults(キー `activeTimerState`)に永続化し、アプリ再起動後もダッシュボードの計測中バナーから復元できる
+  - M4 の可視化は `StatsCalculator` に `dailyMinutes` / `minutesByDay` / `dominantCategoryByDay` を追加。ダッシュボードに週間積み上げ棒グラフ(`Features/Dashboard/WeeklyChartView.swift`)、履歴タブにリスト/カレンダー切替(`Features/History/CalendarView.swift` の `MonthCalendarView`)を実装
 
 ## ブランチ運用
 

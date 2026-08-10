@@ -40,6 +40,7 @@ struct DashboardView: View {
                     }
                     todayCard
                     weekCard
+                    WeeklyChartView(sessions: sessions)
                     if !todaySessions.isEmpty {
                         recentSection
                     }

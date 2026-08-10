@@ -7,6 +7,28 @@ struct HistoryView: View {
 
     @State private var filter: ActivityCategory?
     @State private var editingSession: Session?
+    @State private var viewMode: HistoryViewMode = .list
+
+    private enum HistoryViewMode: String, CaseIterable, Identifiable {
+        case list
+        case calendar
+
+        var id: String { rawValue }
+
+        var label: String {
+            switch self {
+            case .list: "リスト"
+            case .calendar: "カレンダー"
+            }
+        }
+
+        var symbolName: String {
+            switch self {
+            case .list: "list.bullet"
+            case .calendar: "calendar"
+            }
+        }
+    }
 
     private var filtered: [Session] {
         guard let filter else { return sessions }
@@ -23,39 +45,54 @@ struct HistoryView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if filtered.isEmpty {
-                    ContentUnavailableView(
-                        "まだ記録がありません",
-                        systemImage: "tray",
-                        description: Text("ホームの + ボタンから最初の記録を追加しましょう")
-                    )
-                } else {
-                    List {
-                        ForEach(grouped, id: \.day) { group in
-                            Section {
-                                ForEach(group.sessions) { session in
-                                    SessionRowView(session: session)
-                                        .contentShape(Rectangle())
-                                        .onTapGesture { editingSession = session }
-                                }
-                                .onDelete { offsets in
-                                    delete(offsets, in: group.sessions)
-                                }
-                            } header: {
-                                HStack {
-                                    Text(Formatters.dayHeader(group.day))
-                                    Spacer()
-                                    Text(Formatters.duration(
-                                        minutes: group.sessions.reduce(0) { $0 + $1.durationMinutes }
-                                    ))
+                switch viewMode {
+                case .list:
+                    if filtered.isEmpty {
+                        ContentUnavailableView(
+                            "まだ記録がありません",
+                            systemImage: "tray",
+                            description: Text("ホームの + ボタンから最初の記録を追加しましょう")
+                        )
+                    } else {
+                        List {
+                            ForEach(grouped, id: \.day) { group in
+                                Section {
+                                    ForEach(group.sessions) { session in
+                                        SessionRowView(session: session)
+                                            .contentShape(Rectangle())
+                                            .onTapGesture { editingSession = session }
+                                    }
+                                    .onDelete { offsets in
+                                        delete(offsets, in: group.sessions)
+                                    }
+                                } header: {
+                                    HStack {
+                                        Text(Formatters.dayHeader(group.day))
+                                        Spacer()
+                                        Text(Formatters.duration(
+                                            minutes: group.sessions.reduce(0) { $0 + $1.durationMinutes }
+                                        ))
+                                    }
                                 }
                             }
                         }
+                    }
+                case .calendar:
+                    ScrollView {
+                        MonthCalendarView(sessions: filtered)
                     }
                 }
             }
             .navigationTitle("記録")
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Picker("表示切替", selection: $viewMode) {
+                        ForEach(HistoryViewMode.allCases) { mode in
+                            Label(mode.label, systemImage: mode.symbolName).tag(mode)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     filterMenu
                 }
