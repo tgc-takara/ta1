@@ -24,9 +24,8 @@ struct SettingsView: View {
                 }
                 .listRowBackground(Theme.surface)
                 Section("データ") {
-                    LabeledContent("エクスポート") {
-                        Text("M5 で実装予定")
-                            .foregroundStyle(.secondary)
+                    NavigationLink("エクスポート") {
+                        ExportView()
                     }
                 }
                 .listRowBackground(Theme.surface)

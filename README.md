@@ -44,5 +44,5 @@ docs/PLANNING.md     # 企画・仕様・ロードマップ
 - [x] M2: カテゴリ固有機能(本棚・科目・種目・トレーニングメニュー・前回複製)
 - [x] M3: タイマー記録
 - [x] M4: 可視化(Swift Charts・カレンダー)
-- [ ] M5: エクスポート(JSON / CSV / Obsidian Markdown)
+- [x] M5: エクスポート(JSON / CSV / Obsidian Markdown)
 - [ ] M6: 仕上げ

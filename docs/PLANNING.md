@@ -189,50 +189,59 @@ TrackStack/
 └ Tests/
 ```
 
-### 3.5 エクスポート形式仕様
+### 3.5 エクスポート形式仕様(M5 実装版。`Export/ExportService.swift` 準拠)
 
 #### AI 分析用 JSON(全量・単一ファイル)
 Claude / Codex に添付して「分析して」と頼める、自己記述的なフォーマットにする。
 
 ```json
 {
-  "app": "TrackStack",
+  "app": "hitotsumi",
   "schemaVersion": 1,
-  "exportedAt": "2026-08-08T12:00:00+09:00",
+  "exportedAt": "2026-08-11T00:30:00+09:00",
   "sessions": [
     {
       "id": "…", "category": "study", "startedAt": "…",
       "durationMinutes": 45, "note": "過去問 3 回分",
-      "subject": { "name": "簿記2級", "examDate": "2026-11-15" }
+      "subject": { "name": "簿記2級" }
     },
     {
       "id": "…", "category": "reading", "startedAt": "…",
       "durationMinutes": 30,
-      "book": { "title": "…", "author": "…" }
+      "book": { "title": "…", "author": "…", "genre": "…" }
     },
     {
       "id": "…", "category": "training", "startedAt": "…",
       "durationMinutes": 60, "menu": "胸の日",
       "exercises": [
-        { "name": "ベンチプレス", "kind": "strength",
-          "sets": [ { "weightKg": 60, "reps": 10 }, { "weightKg": 60, "reps": 8 } ] },
-        { "name": "ランニング", "kind": "cardio",
+        { "name": "ベンチプレス", "bodyPart": "chest",
+          "sets": [ { "weightKg": 60, "reps": 10, "isSingleArm": false },
+                    { "weightKg": 60, "reps": 8, "isSingleArm": false } ] },
+        { "name": "ランニング", "bodyPart": "cardio",
           "distanceKm": 3.0, "durationMinutes": 20 }
       ]
     }
   ],
-  "books": [ … ], "subjects": [ … ], "exercises": [ … ]
+  "books": [ { "title": "…", "author": "…", "genre": "…", "status": "reading",
+               "progressPercent": 62, "rating": 4, "review": "…",
+               "startedOn": "2026-08-01", "finishedOn": null } ],
+  "subjects": [ { "name": "…", "examDate": "2026-11-15", "targetHours": 100, "memo": "…" } ],
+  "exercises": [ { "name": "…", "bodyPart": "chest", "memo": "…" } ]
 }
 ```
 
-- キーは英語・camelCase、値の自由記述は日本語のまま。日時は ISO 8601(タイムゾーン付き)。
+- キーは英語・camelCase、値の自由記述は日本語のまま。日時(`startedAt` / `exportedAt`)は ISO 8601(タイムゾーン付き)。日付のみの項目(`startedOn` / `finishedOn` / `examDate`)は `yyyy-MM-dd`。
 - `schemaVersion` を持たせ、将来の形式変更に備える。
+- 種目の分類は「筋トレ/有酸素」の2種ではなく、8部位(`BodyPart`: chest/shoulders/biceps/triceps/back/legs/abs/cardio)の rawValue を `bodyPart` として出力する(`kind` は使わない)。
+- `SetRecord` には片手セットかどうかを示す `isSingleArm` を含む。`weightKg` は加重アシスト種目のためマイナス値もあり得る。
+- `Session` は `progressPercent`(読書の進捗)を持たない。進捗は `Book` 側のみが保持するため、JSON にセッションごとの進捗差分は出力しない。
+- `Book.coverImageData`(表紙写真)はサイズが大きいため JSON には含めない。
 
 #### CSV(セッションのフラット表)
-`date, category, duration_minutes, title(book/subject/menu), detail, note` の 1 行 1 セッション。表計算やスクリプトでの軽い集計用。
+`date,category,duration_minutes,title,detail,note` の 1 行 1 セッション。表計算やスクリプトでの軽い集計用。`date` は `yyyy-MM-dd HH:mm`、`category` は日本語ラベル(読書/トレーニング/勉強)、`detail` はトレーニングの種目名を「・」区切りにしたもの(読書・勉強は空)。値に `,` `"` 改行が含まれる場合は RFC4180 に従いダブルクォートで囲みエスケープする。
 
 #### Obsidian 向け Markdown(日次ノート)
-Vault にコピーするだけで使える、frontmatter 付き日次ファイル群(`TrackStack/2026-08-08.md` のような構成で zip 出力)。
+Vault にコピーするだけで使える、frontmatter 付き日次ファイル群(`2026-08-08.md` のような構成で zip 出力)。記録のない日のファイルは作らない。
 
 ```markdown
 ---
@@ -244,17 +253,20 @@ study_minutes: 45
 ---
 
 ## 📚 読書 30分
-- 『◯◯』 55% → 62% — メモ: …
+- 『本のタイトル』 — メモ
 
 ## 💪 トレーニング 60分(胸の日)
 - ベンチプレス 60kg×10, 60kg×8
 - ランニング 3.0km 20分
 
 ## ✏️ 勉強 45分
-- 簿記2級 — 過去問 3 回分
+- 簿記2級 — 過去問3回分
 ```
 
 - frontmatter に数値を持たせることで、Obsidian の Dataview 等でも集計可能。
+- メモがない場合は「 — メモ」の部分を出さない。カテゴリの見出しはその日に記録があるものだけ出す。
+- セットは「60kg×10」形式。片手セットは「60kg×10(片手)」、マイナス重量は「-20kg×10」とそのまま出す。有酸素は「3.0km 20分」形式(距離・時間が無ければある方だけ)。
+- 読書進捗の差分表示(旧仕様の「55% → 62%」)は行わない。`Session` が進捗を持たずデータがないため。
 - Notion 書き出し(v1.1)はこの Markdown をベースに、Notion API でのページ作成に対応する。
 
 ---
