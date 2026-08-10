@@ -45,6 +45,7 @@ struct BookGenreListView: View {
     @Query(sort: \BookGenre.createdAt) private var genres: [BookGenre]
 
     @State private var newName = ""
+    @State private var editingGenre: BookGenre?
 
     private var trimmedNewName: String {
         newName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -63,7 +64,12 @@ struct BookGenreListView: View {
                         .foregroundStyle(.secondary)
                 }
                 ForEach(genres) { genre in
-                    Text(genre.name)
+                    Button {
+                        editingGenre = genre
+                    } label: {
+                        Text(genre.name)
+                            .foregroundStyle(.primary)
+                    }
                 }
                 .onDelete { offsets in
                     for index in offsets {
@@ -72,7 +78,7 @@ struct BookGenreListView: View {
                 }
             } footer: {
                 if !genres.isEmpty {
-                    Text("ジャンルを削除しても、登録済みの本のジャンル表示は残ります")
+                    Text("タップで編集、左スワイプで削除できます。ジャンルを削除しても、登録済みの本のジャンル表示は残ります")
                 }
             }
 
@@ -87,6 +93,87 @@ struct BookGenreListView: View {
         }
         .navigationTitle("読書ジャンル")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(item: $editingGenre) { genre in
+            GenreEditFormView(genre: genre, existingGenres: genres)
+        }
+    }
+}
+
+/// 読書ジャンルの編集フォーム(名前・メモ・削除)。共通の編集シート形式に合わせる。
+struct GenreEditFormView: View {
+    @Environment(\.modelContext) private var context
+    @Environment(\.dismiss) private var dismiss
+
+    let genre: BookGenre
+    let existingGenres: [BookGenre]
+
+    @State private var name: String
+    @State private var memo: String
+    @State private var showingDeleteConfirm = false
+
+    init(genre: BookGenre, existingGenres: [BookGenre]) {
+        self.genre = genre
+        self.existingGenres = existingGenres
+        _name = State(initialValue: genre.name)
+        _memo = State(initialValue: genre.memo ?? "")
+    }
+
+    private var trimmedName: String {
+        name.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// 空文字、または(自分以外の)既存ジャンル名と重複している場合は保存不可
+    private var isInvalid: Bool {
+        let trimmed = trimmedName
+        if trimmed.isEmpty { return true }
+        return existingGenres.contains { $0.id != genre.id && $0.name == trimmed }
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("ジャンル名", text: $name)
+                } footer: {
+                    Text("ジャンル名を変更しても、登録済みの本のジャンル表示(登録時点の名前)は変わりません")
+                }
+
+                Section("メモ") {
+                    TextField("メモ(任意)", text: $memo, axis: .vertical)
+                        .lineLimit(3...6)
+                }
+
+                Section {
+                    Button("このジャンルを削除", role: .destructive) {
+                        showingDeleteConfirm = true
+                    }
+                }
+            }
+            .navigationTitle("ジャンルを編集")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("キャンセル") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("保存") {
+                        genre.name = trimmedName
+                        genre.memo = memo.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : memo
+                        dismiss()
+                    }
+                    .disabled(isInvalid)
+                }
+            }
+            .confirmationDialog("このジャンルを削除しますか?", isPresented: $showingDeleteConfirm, titleVisibility: .visible) {
+                Button("削除", role: .destructive) {
+                    context.delete(genre)
+                    dismiss()
+                }
+                Button("キャンセル", role: .cancel) {}
+            } message: {
+                Text("登録済みの本のジャンル表示は残ります")
+            }
+        }
     }
 }
 

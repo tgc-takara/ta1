@@ -8,10 +8,13 @@ final class BookGenre {
     var id: UUID
     var name: String
     var createdAt: Date
+    /// ジャンルメモ(任意)
+    var memo: String?
 
-    init(name: String) {
+    init(name: String, memo: String? = nil) {
         self.id = UUID()
         self.name = name
         self.createdAt = Date()
+        self.memo = memo
     }
 }

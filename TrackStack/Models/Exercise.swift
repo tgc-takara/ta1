@@ -65,17 +65,20 @@ final class Exercise {
     /// BodyPart.rawValue。旧データは "strength"(筋トレ2分類時代)の場合があり、起動時に移行する。
     var kindRaw: String
     var createdAt: Date
+    /// 種目メモ(フォームやコツなど、任意)
+    var memo: String?
 
     var bodyPart: BodyPart {
         get { BodyPart(rawValue: kindRaw) ?? .chest }
         set { kindRaw = newValue.rawValue }
     }
 
-    init(name: String, bodyPart: BodyPart) {
+    init(name: String, bodyPart: BodyPart, memo: String? = nil) {
         self.id = UUID()
         self.name = name
         self.kindRaw = bodyPart.rawValue
         self.createdAt = Date()
+        self.memo = memo
     }
 
     /// 起動時に投入するプリセット種目。未登録の名前だけ追加される(既存データは重複しない)。

@@ -10,16 +10,19 @@ final class Subject {
     /// 目標学習時間(時間単位)。未設定可。
     var targetHours: Int?
     var createdAt: Date
+    /// 科目メモ(任意)
+    var memo: String?
 
     @Relationship(deleteRule: .nullify, inverse: \Session.subject)
     var sessions: [Session]
 
-    init(name: String, examDate: Date? = nil, targetHours: Int? = nil) {
+    init(name: String, examDate: Date? = nil, targetHours: Int? = nil, memo: String? = nil) {
         self.id = UUID()
         self.name = name
         self.examDate = examDate
         self.targetHours = targetHours
         self.createdAt = Date()
+        self.memo = memo
         self.sessions = []
     }
 
