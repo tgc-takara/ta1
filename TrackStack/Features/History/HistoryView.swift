@@ -72,17 +72,24 @@ struct HistoryView: View {
                                         Text(Formatters.duration(
                                             minutes: group.sessions.reduce(0) { $0 + $1.durationMinutes }
                                         ))
+                                        .font(.mincho(size: 15))
+                                        .fontDesign(.serif)
+                                        .monospacedDigit()
                                     }
                                 }
                             }
                         }
+                        .scrollContentBackground(.hidden)
+                        .background(Theme.paper)
                     }
                 case .calendar:
                     ScrollView {
                         MonthCalendarView(sessions: filtered)
                     }
+                    .background(Theme.paper)
                 }
             }
+            .background(Theme.paper)
             .navigationTitle("記録")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {

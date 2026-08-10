@@ -22,18 +22,23 @@ struct SettingsView: View {
                         IntervalPresetSettingsView()
                     }
                 }
+                .listRowBackground(Theme.surface)
                 Section("データ") {
                     LabeledContent("エクスポート") {
                         Text("M5 で実装予定")
                             .foregroundStyle(.secondary)
                     }
                 }
+                .listRowBackground(Theme.surface)
                 Section("このアプリ") {
                     LabeledContent("バージョン") {
                         Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "-")
                     }
                 }
+                .listRowBackground(Theme.surface)
             }
+            .scrollContentBackground(.hidden)
+            .background(Theme.paper)
             .navigationTitle("設定")
         }
     }
@@ -81,6 +86,7 @@ struct BookGenreListView: View {
                     Text("タップで編集、左スワイプで削除できます。ジャンルを削除しても、登録済みの本のジャンル表示は残ります")
                 }
             }
+            .listRowBackground(Theme.surface)
 
             Section("新しいジャンル") {
                 TextField("ジャンル名(例: ビジネス)", text: $newName)
@@ -90,7 +96,10 @@ struct BookGenreListView: View {
                 }
                 .disabled(trimmedNewName.isEmpty || isDuplicate)
             }
+            .listRowBackground(Theme.surface)
         }
+        .scrollContentBackground(.hidden)
+        .background(Theme.paper)
         .navigationTitle("読書ジャンル")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $editingGenre) { genre in
@@ -205,6 +214,7 @@ struct IntervalPresetSettingsView: View {
             } footer: {
                 Text("すべて削除すると既定のプリセット(30秒/60秒/90秒/2分/3分)に戻ります")
             }
+            .listRowBackground(Theme.surface)
 
             Section("新しいプリセット") {
                 Stepper(value: $newSeconds, in: 5...600, step: 5) {
@@ -217,7 +227,10 @@ struct IntervalPresetSettingsView: View {
                 }
                 .disabled(isDuplicate)
             }
+            .listRowBackground(Theme.surface)
         }
+        .scrollContentBackground(.hidden)
+        .background(Theme.paper)
         .navigationTitle("インターバルタイマー")
         .navigationBarTitleDisplayMode(.inline)
     }

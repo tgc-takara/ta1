@@ -46,7 +46,10 @@ struct TrainingMenuManageView: View {
                     Text("タップで編集、左スワイプで削除できます")
                 }
             }
+            .listRowBackground(Theme.surface)
         }
+        .scrollContentBackground(.hidden)
+        .background(Theme.paper)
         .navigationTitle("トレーニングメニュー")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showingForm) {
@@ -102,6 +105,7 @@ struct SubjectManageView: View {
                     Text("タップで編集、左スワイプで削除できます。削除すると過去の記録の科目表示も外れます(記録自体は残ります)")
                 }
             }
+            .listRowBackground(Theme.surface)
 
             Section("新しい科目") {
                 TextField("科目・資格名(例: 簿記2級)", text: $newName)
@@ -111,7 +115,10 @@ struct SubjectManageView: View {
                 }
                 .disabled(trimmedNewName.isEmpty || isDuplicateNewName)
             }
+            .listRowBackground(Theme.surface)
         }
+        .scrollContentBackground(.hidden)
+        .background(Theme.paper)
         .navigationTitle("勉強科目")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $editingSubject) { subject in
@@ -224,11 +231,13 @@ struct ExerciseManageView: View {
                                 VStack(spacing: 4) {
                                     Image(systemName: part.symbolName)
                                         .font(.title3)
+                                        .frame(height: 24)
                                     Text(part.label)
                                         .font(.caption2)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.8)
                                 }
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 8)
+                                .frame(maxWidth: .infinity, minHeight: 64)
                                 .background(
                                     RoundedRectangle(cornerRadius: 10)
                                         .fill(part.color.opacity(0.15))
@@ -239,6 +248,7 @@ struct ExerciseManageView: View {
                         }
                     }
                     .padding(.vertical, 4)
+                    .listRowBackground(Color.clear)
                 }
 
                 ForEach(BodyPart.allCases) { part in
@@ -260,6 +270,7 @@ struct ExerciseManageView: View {
                                     }
                                 }
                                 .tag(exercise.id)
+                                .listRowBackground(Theme.surface)
                             }
                             .onDelete { offsets in
                                 for index in offsets {
@@ -283,8 +294,11 @@ struct ExerciseManageView: View {
                 } footer: {
                     Text("タップで編集、左スワイプで削除できます。削除しても過去の記録は残ります")
                 }
+                .listRowBackground(Theme.surface)
             }
             .environment(\.editMode, $editMode)
+            .scrollContentBackground(.hidden)
+            .background(Theme.paper)
         }
         .navigationTitle("種目の管理")
         .navigationBarTitleDisplayMode(.inline)

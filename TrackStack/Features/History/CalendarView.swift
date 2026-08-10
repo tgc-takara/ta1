@@ -138,7 +138,7 @@ struct MonthCalendarView: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
-                    .stroke(isToday ? Color.accentColor : Color.clear, lineWidth: 1.5)
+                    .stroke(isToday ? Theme.shu : Color.clear, lineWidth: 1.5)
             )
         }
         .buttonStyle(.plain)

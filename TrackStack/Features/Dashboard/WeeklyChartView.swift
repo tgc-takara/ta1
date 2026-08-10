@@ -66,12 +66,12 @@ struct WeeklyChartView: View {
             } else {
                 Text("まだ記録がありません")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .frame(maxWidth: .infinity, minHeight: 120, alignment: .center)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .cardStyle()
     }
 }

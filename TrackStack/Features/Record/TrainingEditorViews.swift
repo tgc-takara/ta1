@@ -140,38 +140,60 @@ struct ExercisePickerView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                ForEach(BodyPart.allCases) { part in
-                    let items = exercises.filter { $0.bodyPart == part }
-                    if !items.isEmpty {
-                        Section(part.label) {
-                            ForEach(items) { exercise in
-                                Button {
-                                    onSelect(exercise)
-                                    dismiss()
-                                } label: {
-                                    Text(exercise.name)
-                                        .foregroundStyle(.primary)
+            ScrollViewReader { proxy in
+                List {
+                    Color.clear
+                        .frame(height: 0)
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                        .id("top")
+
+                    ForEach(BodyPart.allCases) { part in
+                        let items = exercises.filter { $0.bodyPart == part }
+                        if !items.isEmpty {
+                            Section(part.label) {
+                                ForEach(items) { exercise in
+                                    Button {
+                                        onSelect(exercise)
+                                        dismiss()
+                                    } label: {
+                                        Text(exercise.name)
+                                            .foregroundStyle(.primary)
+                                    }
                                 }
                             }
                         }
                     }
-                }
 
-                Section("新しい種目") {
-                    TextField("種目名", text: $newName)
-                    Picker("部位", selection: $newBodyPart) {
-                        ForEach(BodyPart.allCases) { part in
-                            Text(part.label).tag(part)
+                    Section("新しい種目") {
+                        TextField("種目名", text: $newName)
+                        Picker("部位", selection: $newBodyPart) {
+                            ForEach(BodyPart.allCases) { part in
+                                Text(part.label).tag(part)
+                            }
                         }
+                        Button("追加して選択") {
+                            let exercise = Exercise(name: trimmedNewName, bodyPart: newBodyPart)
+                            context.insert(exercise)
+                            onSelect(exercise)
+                            dismiss()
+                        }
+                        .disabled(trimmedNewName.isEmpty)
                     }
-                    Button("追加して選択") {
-                        let exercise = Exercise(name: trimmedNewName, bodyPart: newBodyPart)
-                        context.insert(exercise)
-                        onSelect(exercise)
-                        dismiss()
+                }
+                .overlay(alignment: .bottomTrailing) {
+                    Button {
+                        withAnimation {
+                            proxy.scrollTo("top", anchor: .top)
+                        }
+                    } label: {
+                        Image(systemName: "arrow.up")
+                            .font(.body.weight(.semibold))
+                            .frame(width: 44, height: 44)
+                            .background(.regularMaterial, in: Circle())
+                            .shadow(radius: 3)
                     }
-                    .disabled(trimmedNewName.isEmpty)
+                    .padding()
                 }
             }
             .navigationTitle("種目を選択")

@@ -24,6 +24,7 @@ struct LibraryView: View {
                     SubjectListView()
                 }
             }
+            .background(Theme.paper)
             .navigationTitle("ライブラリ")
         }
     }

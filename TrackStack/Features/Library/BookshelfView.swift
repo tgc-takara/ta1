@@ -79,6 +79,7 @@ struct BookshelfView: View {
                         BookRowView(book: book)
                             .contentShape(Rectangle())
                             .onTapGesture { editingBook = book }
+                            .listRowBackground(Theme.surface)
                     }
                     .onDelete { offsets in
                         for index in offsets {
@@ -86,8 +87,10 @@ struct BookshelfView: View {
                         }
                     }
                 }
+                .scrollContentBackground(.hidden)
             }
         }
+        .background(Theme.paper)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {

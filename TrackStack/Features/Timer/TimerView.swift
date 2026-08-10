@@ -31,7 +31,7 @@ struct TimerView: View {
                         .foregroundStyle(category.color)
 
                     Text(Formatters.elapsedClock(seconds: elapsed))
-                        .font(.system(size: 64, weight: .bold, design: .monospaced))
+                        .font(.mincho(size: 64))
                         .monospacedDigit()
                         .contentTransition(.numericText())
 
@@ -82,6 +82,8 @@ struct TimerView: View {
                 .padding(.horizontal)
                 .padding(.bottom, 32)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Theme.paper.ignoresSafeArea())
             .confirmationDialog(
                 "このタイマーを破棄しますか?",
                 isPresented: $showingDiscardConfirm,

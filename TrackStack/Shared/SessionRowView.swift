@@ -6,8 +6,12 @@ struct SessionRowView: View {
 
     var body: some View {
         HStack(spacing: 12) {
+            Rectangle()
+                .fill(session.category.color)
+                .frame(width: 3)
+
             Image(systemName: session.category.symbolName)
-                .foregroundStyle(session.category.color)
+                .foregroundStyle(Theme.inkSecondary)
                 .frame(width: 28)
 
             VStack(alignment: .leading, spacing: 2) {

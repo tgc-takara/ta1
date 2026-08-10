@@ -18,6 +18,7 @@ struct TrainingLibraryView: View {
                         Text("設定の「トレーニングメニュー」からメニューを作成できます")
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                            .listRowBackground(Theme.surface)
                     } else {
                         LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 10) {
                             ForEach(menus) { menu in
@@ -43,6 +44,7 @@ struct TrainingLibraryView: View {
                             }
                         }
                         .padding(.vertical, 4)
+                        .listRowBackground(Color.clear)
                     }
                 }
 
@@ -57,11 +59,13 @@ struct TrainingLibraryView: View {
                                 VStack(spacing: 4) {
                                     Image(systemName: part.symbolName)
                                         .font(.title3)
+                                        .frame(height: 24)
                                     Text(part.label)
                                         .font(.caption2)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.8)
                                 }
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 8)
+                                .frame(maxWidth: .infinity, minHeight: 64)
                                 .background(
                                     RoundedRectangle(cornerRadius: 10)
                                         .fill(part.color.opacity(0.15))
@@ -72,6 +76,7 @@ struct TrainingLibraryView: View {
                         }
                     }
                     .padding(.vertical, 4)
+                    .listRowBackground(Color.clear)
                 }
 
                 ForEach(BodyPart.allCases) { part in
@@ -85,6 +90,7 @@ struct TrainingLibraryView: View {
                                         .frame(width: 28)
                                     Text(exercise.name)
                                 }
+                                .listRowBackground(Theme.surface)
                             }
                         } header: {
                             Label("種目: \(part.label)", systemImage: part.symbolName)
@@ -100,8 +106,11 @@ struct TrainingLibraryView: View {
                     } label: {
                         Label("種目を追加", systemImage: "plus")
                     }
+                    .listRowBackground(Theme.surface)
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Theme.paper)
         }
         .sheet(item: $editingMenu) { menu in
             MenuFormView(menuToEdit: menu)

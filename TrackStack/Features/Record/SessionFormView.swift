@@ -68,6 +68,8 @@ struct SessionFormView: View {
                 durationSection
                 noteSection
             }
+            .scrollContentBackground(.hidden)
+            .background(Theme.paper)
             .navigationTitle(sessionToEdit == nil ? "記録を追加" : "記録を編集")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

@@ -23,6 +23,7 @@ struct SubjectListView: View {
                         SubjectRowView(subject: subject)
                             .contentShape(Rectangle())
                             .onTapGesture { editingSubject = subject }
+                            .listRowBackground(Theme.surface)
                     }
                     .onDelete { offsets in
                         for index in offsets {
@@ -30,8 +31,10 @@ struct SubjectListView: View {
                         }
                     }
                 }
+                .scrollContentBackground(.hidden)
             }
         }
+        .background(Theme.paper)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {

@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UIKit
 
 @main
 struct TrackStackApp: App {
@@ -17,6 +18,25 @@ struct TrackStackApp: App {
         migrateLegacyKindsIfNeeded()
         seedPresetsIfNeeded()
         seedSubjectPresetsIfNeeded()
+        configureNavigationBarAppearance()
+    }
+
+    /// 画面タイトル(ナビゲーションバーの大見出し)を明朝体にする。
+    /// フォント未対応環境では自動的にシステムフォントへフォールバックする。
+    private func configureNavigationBarAppearance() {
+        let largeTitleFont = UIFont(name: "HiraMinProN-W6", size: 34)
+            ?? UIFont.systemFont(ofSize: 34, weight: .bold)
+        let titleFont = UIFont(name: "HiraMinProN-W6", size: 17)
+            ?? UIFont.systemFont(ofSize: 17, weight: .semibold)
+
+        let appearance = UINavigationBarAppearance()
+        appearance.configureWithDefaultBackground()
+        appearance.largeTitleTextAttributes = [.font: largeTitleFont]
+        appearance.titleTextAttributes = [.font: titleFont]
+
+        UINavigationBar.appearance().standardAppearance = appearance
+        UINavigationBar.appearance().scrollEdgeAppearance = appearance
+        UINavigationBar.appearance().compactAppearance = appearance
     }
 
     var body: some Scene {

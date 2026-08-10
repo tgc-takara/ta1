@@ -15,7 +15,7 @@ targets:
     info:
       path: TrackStack/Info.plist
       properties:
-        CFBundleDisplayName: "つみき"
+        CFBundleDisplayName: "ひとつみ"
         CFBundleShortVersionString: "0.1.0"
         CFBundleVersion: "1"
         UILaunchScreen: {}

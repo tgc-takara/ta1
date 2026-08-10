@@ -45,14 +45,14 @@ enum BodyPart: String, Codable, CaseIterable, Identifiable {
 
     var color: Color {
         switch self {
-        case .chest: .red
-        case .shoulders: .orange
-        case .biceps: .purple
-        case .triceps: .pink
-        case .back: .blue
-        case .legs: .green
-        case .abs: .mint
-        case .cardio: .cyan
+        case .chest: Theme.dynamicColor(light: 0xA9503C, dark: 0xC97D68)
+        case .shoulders: Theme.dynamicColor(light: 0xB07A33, dark: 0xD0A263)
+        case .biceps: Theme.dynamicColor(light: 0x6E5480, dark: 0xA08CB0)
+        case .triceps: Theme.dynamicColor(light: 0x9A5566, dark: 0xC08A98)
+        case .back: Theme.dynamicColor(light: 0x2E4A63, dark: 0x7FA3C4)
+        case .legs: Theme.dynamicColor(light: 0x4F7A5B, dark: 0x8AB396)
+        case .abs: Theme.dynamicColor(light: 0x3F7A78, dark: 0x82B3B1)
+        case .cardio: Theme.dynamicColor(light: 0x5B6E8C, dark: 0x97A9C4)
         }
     }
 }

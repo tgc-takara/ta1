@@ -47,7 +47,8 @@ struct DashboardView: View {
                 }
                 .padding()
             }
-            .navigationTitle("つみき")
+            .background(Theme.paper)
+            .navigationTitle("ひとつみ")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Menu {
@@ -114,7 +115,7 @@ struct DashboardView: View {
                             .foregroundStyle(.secondary)
                     }
                     .padding()
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                    .cardStyle()
                 }
             }
         }
@@ -130,18 +131,21 @@ struct DashboardView: View {
                 if streak > 0 {
                     Label("\(streak)日継続中", systemImage: "flame.fill")
                         .font(.subheadline.bold())
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(Theme.shu)
                 }
             }
 
             Text(Formatters.duration(minutes: todaySessions.reduce(0) { $0 + $1.durationMinutes }))
-                .font(.system(size: 40, weight: .bold, design: .rounded))
+                .font(.mincho(size: 40))
+                .fontDesign(.serif)
+                .monospacedDigit()
+                .foregroundStyle(Theme.ink)
 
             categoryBreakdown(StatsCalculator.minutesByCategory(todaySessions))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .cardStyle()
     }
 
     private var weekCard: some View {
@@ -149,23 +153,31 @@ struct DashboardView: View {
             Text("今週")
                 .font(.headline)
             Text(Formatters.duration(minutes: weekSessions.reduce(0) { $0 + $1.durationMinutes }))
-                .font(.title2.bold())
+                .font(.mincho(size: 28))
+                .fontDesign(.serif)
+                .monospacedDigit()
+                .foregroundStyle(Theme.ink)
             categoryBreakdown(StatsCalculator.minutesByCategory(weekSessions))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .cardStyle()
     }
 
     private func categoryBreakdown(_ minutes: [ActivityCategory: Int]) -> some View {
         HStack(spacing: 12) {
             ForEach(ActivityCategory.allCases) { category in
                 HStack(spacing: 4) {
+                    Rectangle()
+                        .fill(category.color)
+                        .frame(width: 3, height: 14)
                     Image(systemName: category.symbolName)
-                        .foregroundStyle(category.color)
+                        .font(.caption2)
+                        .foregroundStyle(Theme.inkSecondary)
                     Text(Formatters.duration(minutes: minutes[category] ?? 0))
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
+                        .monospacedDigit()
                 }
             }
         }
@@ -182,6 +194,6 @@ struct DashboardView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .cardStyle()
     }
 }
