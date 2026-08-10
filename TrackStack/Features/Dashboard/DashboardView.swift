@@ -47,7 +47,7 @@ struct DashboardView: View {
                 }
                 .padding()
             }
-            .navigationTitle("TrackStack")
+            .navigationTitle("つみき")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Menu {

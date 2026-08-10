@@ -1,4 +1,4 @@
-# TrackStack(仮)
+# つみき
 
 読書・筋トレ/トレーニング・資格勉強/勉学の記録を 1 つにまとめて取れる iPhone アプリ。
 企画・仕様は [docs/PLANNING.md](docs/PLANNING.md) を参照。
