@@ -15,8 +15,6 @@ final class Session {
 
     // MARK: 読書
     var book: Book?
-    /// セッション終了時点の進捗(0–100)。reading のときのみ使用。
-    var progressPercent: Int?
 
     // MARK: 勉強
     var subject: Subject?

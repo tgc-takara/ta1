@@ -52,9 +52,7 @@ struct SessionRowView: View {
     private var subtitle: String? {
         switch session.category {
         case .reading:
-            if let percent = session.progressPercent {
-                return "進捗 \(percent)%"
-            }
+            break
         case .training:
             let names = session.exerciseLogs
                 .sorted { $0.order < $1.order }

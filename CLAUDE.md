@@ -28,7 +28,7 @@ xcodebuild -scheme TrackStack -destination 'platform=iOS Simulator,name=iPhone 1
 - `Session` が全カテゴリ共通の記録単位。カテゴリ固有情報(Book / Subject / ExerciseLog)は関連エンティティに逃がし、横断集計(合計時間・ストリーク)は Session だけで完結させる
 - enum は SwiftData に rawValue(String)で保存し、computed property で enum に変換(`categoryRaw` / `category` パターン)
 - 種目名・メニュー名は Session 側にスナップショットで保持(マスタ削除後も記録が壊れない)
-- 読書進捗は %(0–100)のみ。ページ数は持たない
+- 読書進捗は Book のみが持つ(記録側には持たない)。%(0–100)のみでページ数は持たない
 - `WorkoutMenu` は入力の雛形。記録実体は常に Session + ExerciseLog
 - 集計ロジックは `Shared/StatsCalculator.swift` に純粋関数で分離(ユニットテスト対象)
 - UI 文言は日本語

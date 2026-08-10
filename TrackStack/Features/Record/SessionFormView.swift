@@ -44,7 +44,7 @@ struct SessionFormView: View {
         _note = State(initialValue: sessionToEdit?.note ?? "")
         _selectedBook = State(initialValue: sessionToEdit?.book)
         _progressPercent = State(initialValue: Double(
-            sessionToEdit?.progressPercent ?? sessionToEdit?.book?.progressPercent ?? 0
+            sessionToEdit?.book?.progressPercent ?? 0
         ))
         _selectedSubject = State(initialValue: sessionToEdit?.subject)
         let drafts = (sessionToEdit?.exerciseLogs ?? [])
@@ -107,7 +107,7 @@ struct SessionFormView: View {
     }
 
     private var readingSection: some View {
-        Section("読書") {
+        Section {
             Picker("本", selection: $selectedBook) {
                 Text("選択なし").tag(nil as Book?)
                 ForEach(books) { book in
@@ -120,7 +120,7 @@ struct SessionFormView: View {
 
             if selectedBook != nil {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("進捗 \(Int(progressPercent))%")
+                    Text("この本の進捗 \(Int(progressPercent))%")
                         .font(.subheadline)
                     Slider(value: $progressPercent, in: 0...100, step: 1)
                 }
@@ -130,6 +130,12 @@ struct SessionFormView: View {
                 Text("ライブラリの読書タブから本を追加できます")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+            }
+        } header: {
+            Text("読書")
+        } footer: {
+            if selectedBook != nil {
+                Text("進捗は本に保存されます(記録ごとには残りません)")
             }
         }
     }
@@ -267,7 +273,6 @@ struct SessionFormView: View {
         // カテゴリ固有フィールドは一度クリアしてから現在のカテゴリ分だけ設定する
         // (編集でカテゴリを切り替えたとき古い関連が残らないように)
         session.book = nil
-        session.progressPercent = nil
         session.subject = nil
         session.menuName = nil
         for log in session.exerciseLogs {
@@ -280,7 +285,6 @@ struct SessionFormView: View {
             session.book = selectedBook
             if let book = selectedBook {
                 let percent = Int(progressPercent)
-                session.progressPercent = percent
                 book.progressPercent = percent
                 if percent >= 100 {
                     book.status = .finished
