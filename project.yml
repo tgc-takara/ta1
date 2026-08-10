@@ -27,7 +27,9 @@ targets:
         SWIFT_VERSION: "5.10"
         TARGETED_DEVICE_FAMILY: "1" # iPhone のみ
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        DEVELOPMENT_TEAM: ""        # 自分の Team ID を設定するか Xcode の Signing で選択
+        # 実機インストール用の署名設定(Personal Team。無料枠のため7日でアプリが失効する)
+        DEVELOPMENT_TEAM: MR4452D97Q
+        CODE_SIGN_STYLE: Automatic
   TrackStackTests:
     type: bundle.unit-test
     platform: iOS
