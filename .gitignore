@@ -12,6 +12,7 @@ build/
 
 # 実機自動再インストール(scripts/reinstall-device.sh)のビルド出力先
 .build-device/
+.build-sim/
 
 # XcodeGen が生成する Info.plist
 TrackStack/Info.plist

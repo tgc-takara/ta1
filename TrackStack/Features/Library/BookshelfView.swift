@@ -148,8 +148,8 @@ struct BookRowView: View {
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
                             }
-                            if !book.notes.isEmpty {
-                                Text("記録\(book.notes.count)件")
+                            if !book.sessions.isEmpty {
+                                Text("記録\(book.sessions.count)件")
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
                             }
@@ -215,11 +215,11 @@ struct BookFormView: View {
     @State private var startedOn: Date
     @State private var finishedOnEnabled: Bool
     @State private var finishedOn: Date
-    @State private var newNoteText: String = ""
 
     private static let noteDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.dateFormat = "M/d"
+        formatter.locale = Locale(identifier: "ja_JP")
+        formatter.dateFormat = "M/d(E)"
         return formatter
     }()
 
@@ -242,56 +242,53 @@ struct BookFormView: View {
         title.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private var trimmedNewNote: String {
-        newNoteText.trimmingCharacters(in: .whitespacesAndNewlines)
+    /// この本に紐づく読書セッション(記録タブで追加したもの)を新しい順に返す
+    private func sortedSessions(of book: Book) -> [Session] {
+        book.sessions.sorted { $0.startedAt > $1.startedAt }
     }
 
-    private func sortedNotes(of book: Book) -> [ReadingNote] {
-        book.notes.sorted { $0.createdAt > $1.createdAt }
-    }
-
+    /// 「読んだ記録」= 記録タブで追加した読書セッションの蓄積(読んだ日 + 読んだ時間)。
+    /// ここでは表示専用。記録の編集・削除は記録タブ側で行う。
     @ViewBuilder
     private var readingNotesSection: some View {
         if let book = bookToEdit {
-            Section("読んだ記録") {
-                ForEach(sortedNotes(of: book)) { note in
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(Self.noteDateFormatter.string(from: note.createdAt))
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                        Text(note.text)
-                    }
-                }
-                .onDelete { offsets in
-                    let notes = sortedNotes(of: book)
-                    for index in offsets {
-                        context.delete(notes[index])
-                    }
-                }
+            let sessions = sortedSessions(of: book)
+            Section {
+                if sessions.isEmpty {
+                    Text("まだ記録がありません")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(sessions) { session in
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack {
+                                Text(Self.noteDateFormatter.string(from: session.startedAt))
+                                Spacer()
+                                Text(Formatters.duration(minutes: session.durationMinutes))
+                                    .foregroundStyle(.secondary)
+                            }
+                            .font(.subheadline)
 
-                TextField("読んだ内容や感想", text: $newNoteText, axis: .vertical)
-                    .lineLimit(2...4)
-                Button("追加") {
-                    addNote(to: book)
+                            if let note = session.note, !note.isEmpty {
+                                Text(note)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
                 }
-                .disabled(trimmedNewNote.isEmpty)
+            } header: {
+                Text("読んだ記録")
+            } footer: {
+                Text("記録タブでこの本を選んで追加した記録がここに蓄積されます")
             }
         } else {
             Section("読んだ記録") {
-                Text("保存後に追加できます")
+                Text("記録タブでこの本を選んで記録すると、ここに蓄積されます")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
         }
-    }
-
-    private func addNote(to book: Book) {
-        let trimmed = trimmedNewNote
-        guard !trimmed.isEmpty else { return }
-        let note = ReadingNote(text: trimmed)
-        note.book = book
-        context.insert(note)
-        newNoteText = ""
     }
 
     var body: some View {

@@ -38,12 +38,9 @@ final class Book {
     /// 読み終わった日(任意)。読了時に未設定なら自動で当日を設定する。
     var finishedOn: Date?
 
+    /// この本の読書記録(記録タブで追加したセッション)。本の「読んだ記録」欄はこれを表示する。
     @Relationship(deleteRule: .nullify, inverse: \Session.book)
     var sessions: [Session]
-
-    /// 本ごとの「読んだ記録」(1回ごとの所感)。本全体のメモは review が別に持つ。
-    @Relationship(deleteRule: .cascade, inverse: \ReadingNote.book)
-    var notes: [ReadingNote]
 
     var status: BookStatus {
         get { BookStatus(rawValue: statusRaw) ?? .wantToRead }
@@ -61,6 +58,5 @@ final class Book {
         self.startedOn = nil
         self.finishedOn = nil
         self.sessions = []
-        self.notes = []
     }
 }

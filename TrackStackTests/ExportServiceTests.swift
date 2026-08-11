@@ -16,7 +16,7 @@ final class ExportServiceTests: XCTestCase {
     override func setUpWithError() throws {
         let schema = Schema([
             Session.self, Book.self, BookGenre.self, Subject.self,
-            Exercise.self, ExerciseLog.self, WorkoutMenu.self, ReadingNote.self,
+            Exercise.self, ExerciseLog.self, WorkoutMenu.self,
         ])
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
         container = try ModelContainer(for: schema, configurations: [configuration])
@@ -92,43 +92,31 @@ final class ExportServiceTests: XCTestCase {
         XCTAssertEqual(sets.last?["isSingleArm"] as? Bool, true)
     }
 
-    func testJSONBookIncludesReadingNotes() throws {
+    /// 本の「読んだ記録」は読書セッションそのもの。セッション側に本の情報が出ることを確認する。
+    func testJSONReadingSessionCarriesBook() throws {
         let book = Book(title: "テスト本", author: "著者A")
         context.insert(book)
-        let note1 = ReadingNote(text: "最初の感想", createdAt: Date(timeIntervalSince1970: 1000))
-        note1.book = book
-        let note2 = ReadingNote(text: "続きの感想", createdAt: Date(timeIntervalSince1970: 2000))
-        note2.book = book
-        context.insert(note1)
-        context.insert(note2)
+        let session = Session(
+            category: .reading,
+            startedAt: Date(timeIntervalSince1970: 1000),
+            durationMinutes: 45,
+            note: "第1章まで"
+        )
+        session.book = book
+        context.insert(session)
 
         let data = try ExportService.makeJSON(
-            sessions: [], books: [book], subjects: [], exercises: [],
+            sessions: [session], books: [book], subjects: [], exercises: [],
             exportedAt: Date()
         )
         let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
-        let books = try XCTUnwrap(json["books"] as? [[String: Any]])
-        let bookJSON = try XCTUnwrap(books.first)
-        let notes = try XCTUnwrap(bookJSON["notes"] as? [[String: Any]])
+        let sessions = try XCTUnwrap(json["sessions"] as? [[String: Any]])
+        let sessionJSON = try XCTUnwrap(sessions.first)
+        let bookJSON = try XCTUnwrap(sessionJSON["book"] as? [String: Any])
 
-        XCTAssertEqual(notes.count, 2)
-        XCTAssertEqual(notes.first?["text"] as? String, "最初の感想")
-        XCTAssertEqual(notes.last?["text"] as? String, "続きの感想")
-    }
-
-    func testJSONBookOmitsNotesKeyWhenEmpty() throws {
-        let book = Book(title: "テスト本")
-        context.insert(book)
-
-        let data = try ExportService.makeJSON(
-            sessions: [], books: [book], subjects: [], exercises: [],
-            exportedAt: Date()
-        )
-        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
-        let books = try XCTUnwrap(json["books"] as? [[String: Any]])
-        let bookJSON = try XCTUnwrap(books.first)
-
-        XCTAssertNil(bookJSON["notes"])
+        XCTAssertEqual(bookJSON["title"] as? String, "テスト本")
+        XCTAssertEqual(sessionJSON["durationMinutes"] as? Int, 45)
+        XCTAssertEqual(sessionJSON["note"] as? String, "第1章まで")
     }
 
     // MARK: - CSV

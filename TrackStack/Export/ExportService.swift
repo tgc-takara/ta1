@@ -63,13 +63,6 @@ enum ExportService {
         var review: String?
         var startedOn: String?
         var finishedOn: String?
-        /// 本ごとの「読んだ記録」(1回ごとの所感)。記録がない本では出力しない。
-        var notes: [ExportNote]?
-    }
-
-    struct ExportNote: Encodable {
-        var text: String
-        var createdAt: Date
     }
 
     struct ExportSubject: Encodable {
@@ -182,8 +175,7 @@ enum ExportService {
     }
 
     private static func exportBook(_ book: Book) -> ExportBook {
-        let sortedNotes = book.notes.sorted { $0.createdAt < $1.createdAt }
-        return ExportBook(
+        ExportBook(
             title: book.title,
             author: book.author,
             genre: book.genreName,
@@ -192,8 +184,7 @@ enum ExportService {
             rating: book.rating,
             review: book.review,
             startedOn: book.startedOn.map { dateOnlyFormatter.string(from: $0) },
-            finishedOn: book.finishedOn.map { dateOnlyFormatter.string(from: $0) },
-            notes: sortedNotes.isEmpty ? nil : sortedNotes.map { ExportNote(text: $0.text, createdAt: $0.createdAt) }
+            finishedOn: book.finishedOn.map { dateOnlyFormatter.string(from: $0) }
         )
     }
 
