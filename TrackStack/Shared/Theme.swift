@@ -2,7 +2,7 @@ import SwiftUI
 import UIKit
 
 /// アプリ全体の色を集約する「和紙と墨」テーマ。すべてライト/ダーク対応のダイナミックカラー。
-/// 朱(shu)は「今日」を示すときにのみ使う特別な色。警告や汎用の強調には使わない。
+/// 藍(ai)は「今日」を示すときにのみ使う特別な色。警告や汎用の強調には使わない。
 enum Theme {
     /// 画面全体の背景(地)
     static let paper = dynamicColor(light: 0xF6F3EA, dark: 0x16150F)
@@ -14,8 +14,8 @@ enum Theme {
     static let inkSecondary = dynamicColor(light: 0x6B6555, dark: 0xA49D8E)
     /// カード罫線・区切り線
     static let rule = dynamicColor(light: 0xE2DCCC, dark: 0x302E25)
-    /// 朱。「今日」を示すときにだけ使う
-    static let shu = dynamicColor(light: 0xA93B2B, dark: 0xD06450)
+    /// 藍。「今日」を示すときにだけ使う(読書カテゴリの青より濃く彩度を上げて区別する)
+    static let ai = dynamicColor(light: 0x1D4E89, dark: 0x8FB6F5)
 
     /// ライト/ダークそれぞれの16進カラーコードからダイナミックな Color を作る
     static func dynamicColor(light: UInt32, dark: UInt32) -> Color {
@@ -42,14 +42,18 @@ extension Font {
     }
 }
 
-/// カードの共通見た目。角丸3px・1px罫線・Theme.surface背景。影は使わない。
+/// カードの共通見た目。角丸18pt・1px罫線・Theme.surface背景。影は使わない。
+/// 角丸は記録・ライブラリ画面のリスト行(insetGrouped)と揃えている。
 struct CardModifier: ViewModifier {
+    /// リスト行と揃えるカードの角丸
+    static let cornerRadius: CGFloat = 18
+
     func body(content: Content) -> some View {
         content
             .background(Theme.surface)
-            .clipShape(RoundedRectangle(cornerRadius: 3))
+            .clipShape(RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 3)
+                RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
                     .stroke(Theme.rule, lineWidth: 1)
             )
     }

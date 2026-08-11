@@ -131,7 +131,7 @@ struct DashboardView: View {
                 if streak > 0 {
                     Label("\(streak)日継続中", systemImage: "flame.fill")
                         .font(.subheadline.bold())
-                        .foregroundStyle(Theme.shu)
+                        .foregroundStyle(Theme.ai)
                 }
             }
 
