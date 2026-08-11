@@ -98,7 +98,7 @@ struct IntervalTimerSection: View {
             Text(Formatters.presetLabel(seconds: seconds))
                 .font(.caption.bold())
                 .padding(.horizontal, 12)
-                .padding(.vertical, 6)
+                .frame(minHeight: 44)
                 .background(isSelected ? Color.accentColor : Color(.secondarySystemFill))
                 .foregroundStyle(isSelected ? Color.white : Color.primary)
                 .clipShape(Capsule())

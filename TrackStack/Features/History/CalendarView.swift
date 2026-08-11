@@ -81,6 +81,8 @@ struct MonthCalendarView: View {
                 changeMonth(by: -1)
             } label: {
                 Image(systemName: "chevron.left")
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
             }
             Spacer()
             Text(monthTitle)
@@ -90,6 +92,8 @@ struct MonthCalendarView: View {
                 changeMonth(by: 1)
             } label: {
                 Image(systemName: "chevron.right")
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
             }
         }
         .padding(.horizontal)
@@ -131,7 +135,8 @@ struct MonthCalendarView: View {
                     .fill(dominantCategory?.color.opacity(dotOpacity(for: totalMinutes)) ?? .clear)
                     .frame(width: 6, height: 6)
             }
-            .frame(maxWidth: .infinity, minHeight: 36)
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .contentShape(Rectangle())
             .background(
                 RoundedRectangle(cornerRadius: 8)
                     .fill(isSelected ? Color.accentColor.opacity(0.15) : Color.clear)

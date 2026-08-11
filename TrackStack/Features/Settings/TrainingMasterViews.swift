@@ -234,8 +234,9 @@ struct ExerciseManageView: View {
                                         .frame(height: 24)
                                     Text(part.label)
                                         .font(.caption2)
-                                        .lineLimit(1)
-                                        .minimumScaleFactor(0.8)
+                                        .lineLimit(2)
+                                        .minimumScaleFactor(0.6)
+                                        .multilineTextAlignment(.center)
                                 }
                                 .frame(maxWidth: .infinity, minHeight: 64)
                                 .background(

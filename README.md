@@ -45,4 +45,4 @@ docs/PLANNING.md     # 企画・仕様・ロードマップ
 - [x] M3: タイマー記録
 - [x] M4: 可視化(Swift Charts・カレンダー)
 - [x] M5: エクスポート(JSON / CSV / Obsidian Markdown)
-- [ ] M6: 仕上げ
+- [x] M6: 仕上げ

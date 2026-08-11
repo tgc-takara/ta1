@@ -35,11 +35,11 @@ xcodebuild -scheme TrackStack -destination 'platform=iOS Simulator,name=iPhone 1
 
 ## 開発状況(2026-08-11 時点)
 
-- 完了: プランニング / M1(基盤) / M2(カテゴリ固有機能) / M3(タイマー記録) / M4(可視化) / M5(エクスポート)
-- 次: M6(仕上げ)
+- M6完了・MVP完成。実機運用中
   - M3 のタイマーは `Features/Timer/ActiveTimer.swift` に「開始時刻との差分」方式で実装済み(PLANNING.md §5)。状態は UserDefaults(キー `activeTimerState`)に永続化し、アプリ再起動後もダッシュボードの計測中バナーから復元できる
   - M4 の可視化は `StatsCalculator` に `dailyMinutes` / `minutesByDay` / `dominantCategoryByDay` を追加。ダッシュボードに週間積み上げ棒グラフ(`Features/Dashboard/WeeklyChartView.swift`)、履歴タブにリスト/カレンダー切替(`Features/History/CalendarView.swift` の `MonthCalendarView`)を実装
   - M5 のエクスポートは `Export/ExportService.swift` に UI 非依存の純粋関数(`makeJSON` / `makeCSV` / `makeMarkdownFiles`)として実装。設定画面の `Features/Settings/ExportView.swift` から JSON(AI分析用)/ CSV(表計算用)/ Obsidian用 Markdown(zip)の3形式を生成し、`UIActivityViewController` のシェアシートで共有する。zip 化は外部ライブラリを使わず `NSFileCoordinator(.forUploading)` を利用。形式仕様は PLANNING.md §3.5 参照(JSON の `app` は `"hitotsumi"`、種目は8部位の `bodyPart`、`SetRecord` に `isSingleArm` あり、Session に進捗差分は含まれない)
+  - M6 の仕上げ: 記録タブのリスト/カレンダー切替をツールバーの小さな Picker から画面内の全幅 segmented Picker に変更(`Features/History/HistoryView.swift`、`LibraryView.swift` と同じパターンに統一)。ダークモード・Dynamic Type(特にアクセシビリティ文字サイズ)・タップ領域を点検し、`WeeklyChartView` の X 軸日付ラベル重なり、部位ジャンプボタン/メニュー名の文字切れ、トレーニング記録のセット入力行のレイアウト崩れ、カレンダー日付セルとインターバルタイマープリセットの小さいタップ領域を修正済み(詳細は変更履歴参照)
 
 ## ブランチ運用
 

@@ -21,13 +21,6 @@ struct HistoryView: View {
             case .calendar: "カレンダー"
             }
         }
-
-        var symbolName: String {
-            switch self {
-            case .list: "list.bullet"
-            case .calendar: "calendar"
-            }
-        }
     }
 
     private var filtered: [Session] {
@@ -44,7 +37,15 @@ struct HistoryView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
+            VStack(spacing: 12) {
+                Picker("表示切替", selection: $viewMode) {
+                    ForEach(HistoryViewMode.allCases) { mode in
+                        Text(mode.label).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal)
+
                 switch viewMode {
                 case .list:
                     if filtered.isEmpty {
@@ -92,14 +93,6 @@ struct HistoryView: View {
             .background(Theme.paper)
             .navigationTitle("記録")
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Picker("表示切替", selection: $viewMode) {
-                        ForEach(HistoryViewMode.allCases) { mode in
-                            Label(mode.label, systemImage: mode.symbolName).tag(mode)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     filterMenu
                 }

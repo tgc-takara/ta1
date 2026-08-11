@@ -63,6 +63,11 @@ struct WeeklyChartView: View {
                     }
                 }
                 .frame(height: 180)
+                // 軸ラベルはグラフの限られた幅に収める必要があるため、Dynamic Type の拡大上限を
+                // 標準サイズの最大(xxxLarge)までに制限する(アクセシビリティ文字サイズで7日分の
+                // 日付ラベルが重なって判読不能になるのを防ぐ)。カード見出しなど他のテキストは
+                // このスコープ外なので通常どおり拡大される
+                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
             } else {
                 Text("まだ記録がありません")
                     .font(.subheadline)

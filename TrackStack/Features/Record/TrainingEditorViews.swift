@@ -27,6 +27,8 @@ struct ExerciseDraftSections: View {
                         drafts.removeAll { $0.id == draft.id }
                     } label: {
                         Image(systemName: "trash")
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.borderless)
                     .font(.caption)
@@ -44,43 +46,7 @@ struct SetsEditorView: View {
     var body: some View {
         ForEach($sets) { $set in
             let index = sets.firstIndex(where: { $0.id == set.id }) ?? 0
-            HStack(spacing: 6) {
-                Text("セット\(index + 1)")
-                    .foregroundStyle(.secondary)
-                    .font(.subheadline)
-
-                Button(set.isSingleArm ? "片手" : "両手") {
-                    set.isSingleArm.toggle()
-                }
-                .buttonStyle(.bordered)
-                .font(.caption)
-
-                Spacer()
-
-                // 重量の符号切り替え(マイナス = 加重で負荷を軽くする)
-                Button {
-                    if set.weightKg != 0 {
-                        set.weightKg = -set.weightKg
-                    }
-                } label: {
-                    Image(systemName: set.weightKg < 0 ? "minus.circle.fill" : "plusminus.circle")
-                        .foregroundStyle(set.weightKg < 0 ? Color.orange : Color.secondary)
-                }
-                .buttonStyle(.borderless)
-
-                TextField("kg", value: $set.weightKg, format: .number)
-                    .keyboardType(.decimalPad)
-                    .multilineTextAlignment(.trailing)
-                    .frame(width: 60)
-                Text("kg ×")
-                    .foregroundStyle(.secondary)
-                TextField("回", value: $set.reps, format: .number)
-                    .keyboardType(.numberPad)
-                    .multilineTextAlignment(.trailing)
-                    .frame(width: 44)
-                Text("回")
-                    .foregroundStyle(.secondary)
-            }
+            SetRow(set: $set, index: index)
         }
         .onDelete { sets.remove(atOffsets: $0) }
 
@@ -91,6 +57,79 @@ struct SetsEditorView: View {
             Label("セットを追加", systemImage: "plus")
         }
         .buttonStyle(.borderless)
+    }
+}
+
+/// セット1件分の入力行。通常の文字サイズでは横一列、Dynamic Type 拡大時は
+/// 横並びが画面幅に収まらなくなるため ViewThatFits で2段組みに自動的に切り替える。
+private struct SetRow: View {
+    @Binding var set: SetRecord
+    let index: Int
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 6) {
+                labelAndArmToggle
+                Spacer()
+                signToggle
+                valueFields
+            }
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 6) {
+                    labelAndArmToggle
+                    Spacer()
+                }
+                HStack(spacing: 6) {
+                    Spacer()
+                    signToggle
+                    valueFields
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var labelAndArmToggle: some View {
+        Text("セット\(index + 1)")
+            .foregroundStyle(.secondary)
+            .font(.subheadline)
+
+        Button(set.isSingleArm ? "片手" : "両手") {
+            set.isSingleArm.toggle()
+        }
+        .buttonStyle(.bordered)
+        .font(.caption)
+    }
+
+    /// 重量の符号切り替え(マイナス = 加重で負荷を軽くする)
+    private var signToggle: some View {
+        Button {
+            if set.weightKg != 0 {
+                set.weightKg = -set.weightKg
+            }
+        } label: {
+            Image(systemName: set.weightKg < 0 ? "minus.circle.fill" : "plusminus.circle")
+                .foregroundStyle(set.weightKg < 0 ? Color.orange : Color.secondary)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.borderless)
+    }
+
+    @ViewBuilder
+    private var valueFields: some View {
+        TextField("kg", value: $set.weightKg, format: .number)
+            .keyboardType(.decimalPad)
+            .multilineTextAlignment(.trailing)
+            .frame(width: 60)
+        Text("kg ×")
+            .foregroundStyle(.secondary)
+        TextField("回", value: $set.reps, format: .number)
+            .keyboardType(.numberPad)
+            .multilineTextAlignment(.trailing)
+            .frame(width: 44)
+        Text("回")
+            .foregroundStyle(.secondary)
     }
 }
 
