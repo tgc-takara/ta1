@@ -29,10 +29,16 @@ cd "$REPO_DIR" || {
 }
 
 # 1. デバイス接続確認
+# devicectl の State は接続方法で表記が変わる:
+#   有線接続   -> "connected"
+#   無線ペア済 -> "available (paired)"
+# どちらもインストール可能なので両方を受け付ける("unavailable" だけを弾く)。
 log "デバイス接続状況を確認します (DEVICE_ID=$DEVICE_ID)"
 DEVICE_LINE="$(xcrun devicectl list devices 2>/dev/null | grep "$DEVICE_ID")"
 
-if [[ -z "$DEVICE_LINE" ]] || [[ "$DEVICE_LINE" != *available* ]]; then
+if [[ -z "$DEVICE_LINE" ]] \
+  || [[ "$DEVICE_LINE" == *unavailable* ]] \
+  || { [[ "$DEVICE_LINE" != *available* ]] && [[ "$DEVICE_LINE" != *connected* ]]; }; then
   log "デバイス未接続のためスキップします"
   log "===== TrackStack reinstall-device.sh 終了(スキップ) ====="
   exit 0
