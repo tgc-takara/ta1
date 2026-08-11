@@ -38,6 +38,11 @@ enum StatsCalculator {
         }
     }
 
+    /// セッション群の合計分数(本ごとの累積読書時間などに使う)
+    static func totalMinutes(_ sessions: [Session]) -> Int {
+        sessions.reduce(0) { $0 + $1.durationMinutes }
+    }
+
     /// 指定日のセッションのみ抽出
     static func sessions(_ sessions: [Session], on day: Date, calendar: Calendar = .current) -> [Session] {
         sessions.filter { calendar.isDate($0.startedAt, inSameDayAs: day) }

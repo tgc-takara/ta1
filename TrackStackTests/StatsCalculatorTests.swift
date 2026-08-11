@@ -48,6 +48,20 @@ final class StatsCalculatorTests: XCTestCase {
         XCTAssertNil(result[.training])
     }
 
+    // MARK: totalMinutes
+
+    func testTotalMinutesSumsAllSessions() {
+        let sessions = [
+            Session(category: .reading, startedAt: Date(), durationMinutes: 30),
+            Session(category: .reading, startedAt: Date(), durationMinutes: 45),
+        ]
+        XCTAssertEqual(StatsCalculator.totalMinutes(sessions), 75)
+    }
+
+    func testTotalMinutesIsZeroForEmptySessions() {
+        XCTAssertEqual(StatsCalculator.totalMinutes([]), 0)
+    }
+
     // MARK: sessions(on:)
 
     func testSessionsOnDayFiltersOtherDays() {

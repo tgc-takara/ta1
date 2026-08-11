@@ -31,6 +31,9 @@ struct SessionFormView: View {
     @State private var menuName: String?
     @State private var showingExercisePicker = false
 
+    // 時間プリセット(設定画面で編集可能。表示直前に再読み込みする)
+    @State private var durationPresets: [Int] = DurationPresets.load()
+
     init(
         sessionToEdit: Session? = nil,
         initialCategory: ActivityCategory? = nil,
@@ -206,15 +209,19 @@ struct SessionFormView: View {
                 in: 5...600,
                 step: 5
             )
-            HStack {
-                ForEach([15, 30, 45, 60, 90], id: \.self) { preset in
-                    Button("\(preset)分") {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 8) {
+                ForEach(durationPresets, id: \.self) { preset in
+                    Button(Formatters.duration(minutes: preset)) {
                         durationMinutes = preset
                     }
                     .buttonStyle(.bordered)
                     .font(.caption)
                 }
             }
+        }
+        .onAppear {
+            // 設定画面でプリセットが変更されている可能性があるため、表示のたびに再読み込みする
+            durationPresets = DurationPresets.load()
         }
     }
 

@@ -124,8 +124,13 @@ Book
 ├ id, title, author?, coverImage?
 ├ status: enum { wantToRead, reading, finished }
 ├ progressPercent: Int    // 最新進捗(0–100)
-├ rating: Int?, review: String?
-└ sessions: [Session]
+├ rating: Int?, review: String?  // review は本全体のメモ
+├ sessions: [Session]
+└ notes: [ReadingNote]    // 読んだ記録(1回ごとの所感。review とは別)
+
+ReadingNote(本ごとの「読んだ記録」)
+├ id, text, createdAt
+└ book: Book?
 
 Subject(科目・資格)
 ├ id, name, examDate?, targetHours?
@@ -224,7 +229,8 @@ Claude / Codex に添付して「分析して」と頼める、自己記述的�
   ],
   "books": [ { "title": "…", "author": "…", "genre": "…", "status": "reading",
                "progressPercent": 62, "rating": 4, "review": "…",
-               "startedOn": "2026-08-01", "finishedOn": null } ],
+               "startedOn": "2026-08-01", "finishedOn": null,
+               "notes": [ { "text": "…", "createdAt": "2026-08-05T21:00:00+09:00" } ] } ],
   "subjects": [ { "name": "…", "examDate": "2026-11-15", "targetHours": 100, "memo": "…" } ],
   "exercises": [ { "name": "…", "bodyPart": "chest", "memo": "…" } ]
 }
@@ -236,6 +242,7 @@ Claude / Codex に添付して「分析して」と頼める、自己記述的�
 - `SetRecord` には片手セットかどうかを示す `isSingleArm` を含む。`weightKg` は加重アシスト種目のためマイナス値もあり得る。
 - `Session` は `progressPercent`(読書の進捗)を持たない。進捗は `Book` 側のみが保持するため、JSON にセッションごとの進捗差分は出力しない。
 - `Book.coverImageData`(表紙写真)はサイズが大きいため JSON には含めない。
+- `Book.notes`(読んだ記録)は `createdAt` 昇順で出力する。記録がない本では `notes` キー自体を出力しない。
 
 #### CSV(セッションのフラット表)
 `date,category,duration_minutes,title,detail,note` の 1 行 1 セッション。表計算やスクリプトでの軽い集計用。`date` は `yyyy-MM-dd HH:mm`、`category` は日本語ラベル(読書/トレーニング/勉強)、`detail` はトレーニングの種目名を「・」区切りにしたもの(読書・勉強は空)。値に `,` `"` 改行が含まれる場合は RFC4180 に従いダブルクォートで囲みエスケープする。

@@ -148,17 +148,30 @@ struct BookRowView: View {
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
                             }
+                            if !book.notes.isEmpty {
+                                Text("記録\(book.notes.count)件")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     }
                     Spacer()
-                    if book.status == .finished, let rating = book.rating {
-                        Text(String(repeating: "★", count: rating))
-                            .font(.caption)
-                            .foregroundStyle(.yellow)
-                    } else {
-                        Text("\(book.progressPercent)%")
-                            .font(.subheadline.bold())
-                            .foregroundStyle(.secondary)
+                    VStack(alignment: .trailing, spacing: 2) {
+                        if book.status == .finished, let rating = book.rating {
+                            Text(String(repeating: "★", count: rating))
+                                .font(.caption)
+                                .foregroundStyle(.yellow)
+                        } else {
+                            Text("\(book.progressPercent)%")
+                                .font(.subheadline.bold())
+                                .foregroundStyle(.secondary)
+                        }
+                        let totalMinutes = StatsCalculator.totalMinutes(book.sessions)
+                        if totalMinutes > 0 {
+                            Text(Formatters.duration(minutes: totalMinutes))
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
                 if book.status != .wantToRead {
@@ -202,6 +215,13 @@ struct BookFormView: View {
     @State private var startedOn: Date
     @State private var finishedOnEnabled: Bool
     @State private var finishedOn: Date
+    @State private var newNoteText: String = ""
+
+    private static let noteDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "M/d"
+        return formatter
+    }()
 
     init(bookToEdit: Book? = nil) {
         self.bookToEdit = bookToEdit
@@ -222,6 +242,58 @@ struct BookFormView: View {
         title.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    private var trimmedNewNote: String {
+        newNoteText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func sortedNotes(of book: Book) -> [ReadingNote] {
+        book.notes.sorted { $0.createdAt > $1.createdAt }
+    }
+
+    @ViewBuilder
+    private var readingNotesSection: some View {
+        if let book = bookToEdit {
+            Section("読んだ記録") {
+                ForEach(sortedNotes(of: book)) { note in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(Self.noteDateFormatter.string(from: note.createdAt))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        Text(note.text)
+                    }
+                }
+                .onDelete { offsets in
+                    let notes = sortedNotes(of: book)
+                    for index in offsets {
+                        context.delete(notes[index])
+                    }
+                }
+
+                TextField("読んだ内容や感想", text: $newNoteText, axis: .vertical)
+                    .lineLimit(2...4)
+                Button("追加") {
+                    addNote(to: book)
+                }
+                .disabled(trimmedNewNote.isEmpty)
+            }
+        } else {
+            Section("読んだ記録") {
+                Text("保存後に追加できます")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func addNote(to book: Book) {
+        let trimmed = trimmedNewNote
+        guard !trimmed.isEmpty else { return }
+        let note = ReadingNote(text: trimmed)
+        note.book = book
+        context.insert(note)
+        newNoteText = ""
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -238,6 +310,12 @@ struct BookFormView: View {
                         ForEach(BookStatus.allCases) { status in
                             Text(status.label).tag(status)
                         }
+                    }
+                    if let book = bookToEdit {
+                        LabeledContent(
+                            "読書時間",
+                            value: Formatters.duration(minutes: StatsCalculator.totalMinutes(book.sessions))
+                        )
                     }
                 } footer: {
                     if genres.isEmpty {
@@ -286,6 +364,8 @@ struct BookFormView: View {
                     TextField("メモ(任意)", text: $review, axis: .vertical)
                         .lineLimit(3...6)
                 }
+
+                readingNotesSection
 
                 if status == .finished {
                     Section("評価") {

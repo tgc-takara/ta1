@@ -21,6 +21,9 @@ struct SettingsView: View {
                     NavigationLink("インターバルタイマー") {
                         IntervalPresetSettingsView()
                     }
+                    NavigationLink("記録時間のプリセット") {
+                        DurationPresetSettingsView()
+                    }
                 }
                 .listRowBackground(Theme.surface)
                 Section("データ") {
@@ -231,6 +234,56 @@ struct IntervalPresetSettingsView: View {
         .scrollContentBackground(.hidden)
         .background(Theme.paper)
         .navigationTitle("インターバルタイマー")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+/// 記録フォームの時間プリセット(分)の管理。ここで追加・削除した値が
+/// 記録追加画面(SessionFormView)の時間セクションの選択肢になる。
+struct DurationPresetSettingsView: View {
+    @State private var presets: [Int] = DurationPresets.load()
+    @State private var newMinutes: Int = 30
+
+    private var isDuplicate: Bool {
+        presets.contains(newMinutes)
+    }
+
+    var body: some View {
+        List {
+            Section {
+                if presets.isEmpty {
+                    Text("プリセットがありません")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                ForEach(presets, id: \.self) { minutes in
+                    Text(Formatters.duration(minutes: minutes))
+                }
+                .onDelete { offsets in
+                    presets.remove(atOffsets: offsets)
+                    DurationPresets.save(presets)
+                }
+            } footer: {
+                Text("すべて削除すると既定のプリセット(5分/10分/15分/30分/45分/60分)に戻ります")
+            }
+            .listRowBackground(Theme.surface)
+
+            Section("新しいプリセット") {
+                Stepper(value: $newMinutes, in: 5...300, step: 5) {
+                    Text(Formatters.duration(minutes: newMinutes))
+                }
+                Button("追加") {
+                    presets.append(newMinutes)
+                    presets.sort()
+                    DurationPresets.save(presets)
+                }
+                .disabled(isDuplicate)
+            }
+            .listRowBackground(Theme.surface)
+        }
+        .scrollContentBackground(.hidden)
+        .background(Theme.paper)
+        .navigationTitle("記録時間のプリセット")
         .navigationBarTitleDisplayMode(.inline)
     }
 }

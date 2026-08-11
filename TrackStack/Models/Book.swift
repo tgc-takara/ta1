@@ -41,6 +41,10 @@ final class Book {
     @Relationship(deleteRule: .nullify, inverse: \Session.book)
     var sessions: [Session]
 
+    /// 本ごとの「読んだ記録」(1回ごとの所感)。本全体のメモは review が別に持つ。
+    @Relationship(deleteRule: .cascade, inverse: \ReadingNote.book)
+    var notes: [ReadingNote]
+
     var status: BookStatus {
         get { BookStatus(rawValue: statusRaw) ?? .wantToRead }
         set { statusRaw = newValue.rawValue }
@@ -57,5 +61,6 @@ final class Book {
         self.startedOn = nil
         self.finishedOn = nil
         self.sessions = []
+        self.notes = []
     }
 }

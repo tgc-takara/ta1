@@ -10,7 +10,7 @@ struct TrackStackApp: App {
         do {
             container = try ModelContainer(
                 for: Session.self, Book.self, BookGenre.self, Subject.self,
-                Exercise.self, ExerciseLog.self, WorkoutMenu.self
+                Exercise.self, ExerciseLog.self, WorkoutMenu.self, ReadingNote.self
             )
         } catch {
             fatalError("ModelContainer の初期化に失敗: \(error)")
