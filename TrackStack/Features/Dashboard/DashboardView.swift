@@ -164,8 +164,13 @@ struct DashboardView: View {
         .cardStyle()
     }
 
+    /// カテゴリ別の内訳。5カテゴリあるため1行に収めず3列グリッドで折り返す。
     private func categoryBreakdown(_ minutes: [ActivityCategory: Int]) -> some View {
-        HStack(spacing: 12) {
+        LazyVGrid(
+            columns: Array(repeating: GridItem(.flexible(), alignment: .leading), count: 3),
+            alignment: .leading,
+            spacing: 8
+        ) {
             ForEach(ActivityCategory.allCases) { category in
                 HStack(spacing: 4) {
                     Rectangle()
@@ -178,6 +183,8 @@ struct DashboardView: View {
                         .font(.subheadline)
                         .foregroundStyle(Theme.inkSecondary)
                         .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                 }
             }
         }

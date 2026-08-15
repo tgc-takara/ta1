@@ -15,6 +15,7 @@ enum ExportService {
         var books: [ExportBook]
         var subjects: [ExportSubject]
         var exercises: [ExportExercise]
+        var podcastShows: [ExportPodcastShow]
     }
 
     struct ExportSession: Encodable {
@@ -27,6 +28,26 @@ enum ExportService {
         var subject: ExportSessionSubject?
         var menu: String?
         var exercises: [ExportSessionExercise]?
+        /// 新聞: その日クリップした記事
+        var articles: [ExportArticleClip]?
+        /// ポッドキャスト: 番組名とエピソード名
+        var podcast: ExportSessionPodcast?
+    }
+
+    struct ExportArticleClip: Encodable {
+        var title: String
+        var url: String?
+        var memo: String?
+    }
+
+    struct ExportSessionPodcast: Encodable {
+        var show: String?
+        var episode: String?
+    }
+
+    struct ExportPodcastShow: Encodable {
+        var name: String
+        var memo: String?
     }
 
     struct ExportSessionBook: Encodable {
@@ -101,16 +122,18 @@ enum ExportService {
         books: [Book],
         subjects: [Subject],
         exercises: [Exercise],
+        podcastShows: [PodcastShow] = [],
         exportedAt: Date
     ) throws -> Data {
         let payload = ExportPayload(
             app: "hitotsumi",
-            schemaVersion: 1,
+            schemaVersion: 2,
             exportedAt: exportedAt,
             sessions: sessions.map(exportSession),
             books: books.map(exportBook),
             subjects: subjects.map(exportSubject),
-            exercises: exercises.map(exportExercise)
+            exercises: exercises.map(exportExercise),
+            podcastShows: podcastShows.map { ExportPodcastShow(name: $0.name, memo: $0.memo) }
         )
 
         let encoder = JSONEncoder()
@@ -127,6 +150,8 @@ enum ExportService {
         var subject: ExportSessionSubject?
         var menu: String?
         var exercises: [ExportSessionExercise]?
+        var articles: [ExportArticleClip]?
+        var podcast: ExportSessionPodcast?
 
         switch session.category {
         case .reading:
@@ -146,6 +171,16 @@ enum ExportService {
             exercises = session.exerciseLogs
                 .sorted { $0.order < $1.order }
                 .map(exportSessionExercise)
+        case .newspaper:
+            let clips = session.articleClips.sorted { $0.order < $1.order }
+            articles = clips.isEmpty ? nil : clips.map {
+                ExportArticleClip(title: $0.title, url: $0.urlString, memo: $0.memo)
+            }
+        case .podcast:
+            podcast = ExportSessionPodcast(
+                show: session.podcastShow?.name,
+                episode: session.episodeTitle
+            )
         }
 
         return ExportSession(
@@ -157,7 +192,9 @@ enum ExportService {
             book: book,
             subject: subject,
             menu: menu,
-            exercises: exercises
+            exercises: exercises,
+            articles: articles,
+            podcast: podcast
         )
     }
 
@@ -231,6 +268,15 @@ enum ExportService {
                     .sorted { $0.order < $1.order }
                     .map(\.exerciseName)
                     .joined(separator: "・")
+            case .newspaper:
+                title = "新聞"
+                detail = session.articleClips
+                    .sorted { $0.order < $1.order }
+                    .map(\.title)
+                    .joined(separator: "・")
+            case .podcast:
+                title = session.podcastShow?.name ?? ""
+                detail = session.episodeTitle ?? ""
             }
 
             let note = session.note ?? ""
@@ -285,11 +331,16 @@ enum ExportService {
         let readingSessions = sessions.filter { $0.category == .reading }
         let trainingSessions = sessions.filter { $0.category == .training }
         let studySessions = sessions.filter { $0.category == .study }
+        let newspaperSessions = sessions.filter { $0.category == .newspaper }
+        let podcastSessions = sessions.filter { $0.category == .podcast }
 
         let readingMinutes = readingSessions.reduce(0) { $0 + $1.durationMinutes }
         let trainingMinutes = trainingSessions.reduce(0) { $0 + $1.durationMinutes }
         let studyMinutes = studySessions.reduce(0) { $0 + $1.durationMinutes }
+        let newspaperMinutes = newspaperSessions.reduce(0) { $0 + $1.durationMinutes }
+        let podcastMinutes = podcastSessions.reduce(0) { $0 + $1.durationMinutes }
         let totalMinutes = readingMinutes + trainingMinutes + studyMinutes
+            + newspaperMinutes + podcastMinutes
 
         let frontmatter = [
             "---",
@@ -298,6 +349,8 @@ enum ExportService {
             "reading_minutes: \(readingMinutes)",
             "training_minutes: \(trainingMinutes)",
             "study_minutes: \(studyMinutes)",
+            "newspaper_minutes: \(newspaperMinutes)",
+            "podcast_minutes: \(podcastMinutes)",
             "---",
         ].joined(separator: "\n")
 
@@ -330,6 +383,29 @@ enum ExportService {
             for session in studySessions {
                 let name = session.subject?.name ?? ""
                 lines.append("- \(name)\(noteSuffix(session.note))")
+            }
+            sections.append(lines.joined(separator: "\n"))
+        }
+
+        if !newspaperSessions.isEmpty {
+            var lines = ["## 📰 新聞 \(newspaperMinutes)分"]
+            let clips = newspaperSessions
+                .flatMap { $0.articleClips }
+                .sorted { $0.order < $1.order }
+            for clip in clips {
+                // URL があれば Obsidian からそのまま開けるようリンク記法にする
+                let title = clip.urlString.map { "[\(clip.title)](\($0))" } ?? clip.title
+                lines.append("- \(title)\(noteSuffix(clip.memo))")
+            }
+            sections.append(lines.joined(separator: "\n"))
+        }
+
+        if !podcastSessions.isEmpty {
+            var lines = ["## 🎧 ポッドキャスト \(podcastMinutes)分"]
+            for session in podcastSessions {
+                let name = session.podcastShow?.name ?? ""
+                let episode = session.episodeTitle.map { " \($0)" } ?? ""
+                lines.append("- \(name)\(episode)\(noteSuffix(session.note))")
             }
             sections.append(lines.joined(separator: "\n"))
         }

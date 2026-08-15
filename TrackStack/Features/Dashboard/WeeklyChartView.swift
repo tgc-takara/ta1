@@ -42,11 +42,10 @@ struct WeeklyChartView: View {
                     )
                     .foregroundStyle(by: .value("カテゴリ", point.category.label))
                 }
-                .chartForegroundStyleScale([
-                    ActivityCategory.reading.label: ActivityCategory.reading.color,
-                    ActivityCategory.training.label: ActivityCategory.training.color,
-                    ActivityCategory.study.label: ActivityCategory.study.color,
-                ])
+                .chartForegroundStyleScale(
+                    domain: ActivityCategory.allCases.map(\.label),
+                    range: ActivityCategory.allCases.map(\.color)
+                )
                 .chartXAxis {
                     AxisMarks(values: .stride(by: .day)) { value in
                         AxisValueLabel(format: .dateTime.month(.defaultDigits).day(), centered: true)

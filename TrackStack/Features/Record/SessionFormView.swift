@@ -11,6 +11,7 @@ struct SessionFormView: View {
     @Query(sort: \Book.createdAt, order: .reverse) private var books: [Book]
     @Query(sort: \Subject.createdAt, order: .reverse) private var subjects: [Subject]
     @Query(sort: \WorkoutMenu.createdAt, order: .reverse) private var menus: [WorkoutMenu]
+    @Query(sort: \PodcastShow.createdAt, order: .reverse) private var shows: [PodcastShow]
 
     private let sessionToEdit: Session?
 
@@ -31,6 +32,13 @@ struct SessionFormView: View {
     @State private var menuName: String?
     @State private var showingExercisePicker = false
 
+    // 新聞
+    @State private var clipDrafts: [ArticleClipDraft]
+
+    // ポッドキャスト
+    @State private var selectedShow: PodcastShow?
+    @State private var episodeTitle: String
+
     // 時間プリセット(設定画面で編集可能。表示直前に再読み込みする)
     @State private var durationPresets: [Int] = DurationPresets.load()
 
@@ -41,7 +49,7 @@ struct SessionFormView: View {
         initialDurationMinutes: Int? = nil
     ) {
         self.sessionToEdit = sessionToEdit
-        _category = State(initialValue: sessionToEdit?.category ?? initialCategory ?? .study)
+        _category = State(initialValue: sessionToEdit?.category ?? initialCategory ?? .reading)
         _startedAt = State(initialValue: sessionToEdit?.startedAt ?? initialStartedAt ?? Date())
         _durationMinutes = State(initialValue: sessionToEdit?.durationMinutes ?? initialDurationMinutes ?? 30)
         _note = State(initialValue: sessionToEdit?.note ?? "")
@@ -55,6 +63,12 @@ struct SessionFormView: View {
             .map(ExerciseDraft.init(log:))
         _exerciseDrafts = State(initialValue: drafts)
         _menuName = State(initialValue: sessionToEdit?.menuName)
+        let clips = (sessionToEdit?.articleClips ?? [])
+            .sorted { $0.order < $1.order }
+            .map(ArticleClipDraft.init(clip:))
+        _clipDrafts = State(initialValue: clips)
+        _selectedShow = State(initialValue: sessionToEdit?.podcastShow)
+        _episodeTitle = State(initialValue: sessionToEdit?.episodeTitle ?? "")
     }
 
     var body: some View {
@@ -66,6 +80,8 @@ struct SessionFormView: View {
                 case .reading: readingSection
                 case .study: studySection
                 case .training: trainingSections
+                case .newspaper: newspaperSection
+                case .podcast: podcastSection
                 }
 
                 durationSection
@@ -201,6 +217,62 @@ struct SessionFormView: View {
         }
     }
 
+    /// 新聞。1回の記録に読んだ記事を何本でもぶら下げる。
+    private var newspaperSection: some View {
+        Section {
+            ForEach($clipDrafts) { $draft in
+                VStack(alignment: .leading, spacing: 6) {
+                    TextField("記事の見出し", text: $draft.title)
+                        .font(.body)
+                    TextField("URL(任意)", text: $draft.urlString)
+                        .font(.caption)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .keyboardType(.URL)
+                    TextField("メモ(任意)", text: $draft.memo, axis: .vertical)
+                        .font(.caption)
+                        .lineLimit(1...3)
+                }
+                .padding(.vertical, 2)
+            }
+            .onDelete { clipDrafts.remove(atOffsets: $0) }
+
+            Button {
+                clipDrafts.append(ArticleClipDraft())
+            } label: {
+                Label("記事を追加", systemImage: "plus")
+            }
+        } header: {
+            Text("読んだ記事")
+        } footer: {
+            Text(clipDrafts.isEmpty
+                 ? "読んだ記事をクリップできます(記事なしで時間だけの記録も可)"
+                 : "見出しが空の記事は保存されません。左スワイプで削除できます")
+        }
+    }
+
+    /// ポッドキャスト。番組はライブラリで管理するマスタから選ぶ。
+    private var podcastSection: some View {
+        Section {
+            Picker("番組", selection: $selectedShow) {
+                Text("選択なし").tag(nil as PodcastShow?)
+                ForEach(shows) { show in
+                    Text(show.name).tag(show as PodcastShow?)
+                }
+            }
+
+            TextField("エピソード名(任意)", text: $episodeTitle)
+
+            if shows.isEmpty {
+                Text("ライブラリのポッドキャストタブから番組を追加できます")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        } header: {
+            Text("ポッドキャスト")
+        }
+    }
+
     private var durationSection: some View {
         Section("時間") {
             Stepper(
@@ -282,10 +354,16 @@ struct SessionFormView: View {
         session.book = nil
         session.subject = nil
         session.menuName = nil
+        session.podcastShow = nil
+        session.episodeTitle = nil
         for log in session.exerciseLogs {
             context.delete(log)
         }
         session.exerciseLogs = []
+        for clip in session.articleClips {
+            context.delete(clip)
+        }
+        session.articleClips = []
 
         switch category {
         case .reading:
@@ -308,6 +386,18 @@ struct SessionFormView: View {
                 log.session = session
                 context.insert(log)
             }
+        case .newspaper:
+            // 見出しが空のクリップは入力途中とみなして保存しない
+            for (index, draft) in clipDrafts.filter({ !$0.trimmedTitle.isEmpty }).enumerated() {
+                let clip = draft.makeClip(order: index)
+                clip.session = session
+                context.insert(clip)
+            }
+        case .podcast:
+            session.podcastShow = selectedShow
+            session.episodeTitle = episodeTitle
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .nilIfEmpty
         }
 
         dismiss()

@@ -25,18 +25,22 @@ xcodebuild -scheme TrackStack -destination 'platform=iOS Simulator,name=iPhone 1
 
 ## 設計の要点
 
-- `Session` が全カテゴリ共通の記録単位。カテゴリ固有情報(Book / Subject / ExerciseLog)は関連エンティティに逃がし、横断集計(合計時間・ストリーク)は Session だけで完結させる
+- カテゴリは5つ(読書 / トレーニング / 勉強 / 新聞 / ポッドキャスト)。`ActivityCategory` の case 順がそのまま選択肢・凡例・内訳の表示順になる
+- `Session` が全カテゴリ共通の記録単位。カテゴリ固有情報(Book / Subject / ExerciseLog / ArticleClip / PodcastShow)は関連エンティティに逃がし、横断集計(合計時間・ストリーク)は Session だけで完結させる
 - enum は SwiftData に rawValue(String)で保存し、computed property で enum に変換(`categoryRaw` / `category` パターン)
 - 種目名・メニュー名は Session 側にスナップショットで保持(マスタ削除後も記録が壊れない)
 - 読書進捗は Book のみが持つ(記録側には持たない)。%(0–100)のみでページ数は持たない
-- 読書メモは2種類: `Book.review`(本全体のメモ・自由記述1件)と `ReadingNote`(1回ごとの「読んだ記録」・複数件を時系列蓄積)
+- 本の「読んだ記録」は読書セッションそのもの(専用エンティティは持たない)。本全体のメモだけ `Book.review` に持つ
+- 新聞は1日1件のセッションに `ArticleClip`(見出し / URL / メモ)を複数ぶら下げる。ポッドキャストは `PodcastShow` をマスタにし、エピソード名は Session 側に持つ
 - `WorkoutMenu` は入力の雛形。記録実体は常に Session + ExerciseLog
+- 起動時のデータ移行・プリセット投入は `TrackStackApp.setupVersion` で初回のみ実行する。毎回走らせると起動のたびに全レコードをフェッチすることになるため、プリセットを追加したときだけこの版数を上げる
 - 集計ロジックは `Shared/StatsCalculator.swift` に純粋関数で分離(ユニットテスト対象)
 - UI 文言は日本語
 
-## 開発状況(2026-08-11 時点)
+## 開発状況(2026-08-15 時点)
 
 - M6完了・MVP完成。実機運用中
+- MVP後の追加: 新聞(記事クリップ)とポッドキャスト(番組マスタ)のカテゴリを追加。ライブラリのカテゴリ選択は5つ入らないため segmented から横スクロールのチップに変更。エクスポート JSON は `schemaVersion: 2`(`sessions[].articles` / `sessions[].podcast` / `podcastShows` を追加)
   - M3 のタイマーは `Features/Timer/ActiveTimer.swift` に「開始時刻との差分」方式で実装済み(PLANNING.md §5)。状態は UserDefaults(キー `activeTimerState`)に永続化し、アプリ再起動後もダッシュボードの計測中バナーから復元できる
   - M4 の可視化は `StatsCalculator` に `dailyMinutes` / `minutesByDay` / `dominantCategoryByDay` を追加。ダッシュボードに週間積み上げ棒グラフ(`Features/Dashboard/WeeklyChartView.swift`)、履歴タブにリスト/カレンダー切替(`Features/History/CalendarView.swift` の `MonthCalendarView`)を実装
   - M5 のエクスポートは `Export/ExportService.swift` に UI 非依存の純粋関数(`makeJSON` / `makeCSV` / `makeMarkdownFiles`)として実装。設定画面の `Features/Settings/ExportView.swift` から JSON(AI分析用)/ CSV(表計算用)/ Obsidian用 Markdown(zip)の3形式を生成し、`UIActivityViewController` のシェアシートで共有する。zip 化は外部ライブラリを使わず `NSFileCoordinator(.forUploading)` を利用。形式仕様は PLANNING.md §3.5 参照(JSON の `app` は `"hitotsumi"`、種目は8部位の `bodyPart`、`SetRecord` に `isSingleArm` あり、Session に進捗差分は含まれない)

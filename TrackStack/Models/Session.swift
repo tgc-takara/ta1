@@ -25,6 +25,16 @@ final class Session {
     /// 使用したメニュー名(参照ではなくスナップショット。メニュー削除後も記録は残る)
     var menuName: String?
 
+    // MARK: 新聞
+    /// その日読んだ記事のクリップ
+    @Relationship(deleteRule: .cascade, inverse: \ArticleClip.session)
+    var articleClips: [ArticleClip]
+
+    // MARK: ポッドキャスト
+    var podcastShow: PodcastShow?
+    /// エピソード名(任意)
+    var episodeTitle: String?
+
     var category: ActivityCategory {
         get { ActivityCategory(rawValue: categoryRaw) ?? .study }
         set { categoryRaw = newValue.rawValue }
@@ -42,5 +52,6 @@ final class Session {
         self.durationMinutes = durationMinutes
         self.note = note
         self.exerciseLogs = []
+        self.articleClips = []
     }
 }
