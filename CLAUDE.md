@@ -36,6 +36,8 @@ xcodebuild -scheme TrackStack -destination 'platform=iOS Simulator,name=iPhone 1
 - 本の「読んだ記録」は読書セッションそのもの(専用エンティティは持たない)。本全体のメモだけ `Book.review` に持つ
 - 記事(新聞・Web記事・レポート)は1日1件のセッションに `ArticleClip`(見出し / URL / メモ)を複数ぶら下げる。動画・音声(ポッドキャスト・動画講座・セミナー)はシリーズをマスタにし、タイトルは Session 側に持つ。シリーズの型名が `PodcastShow` なのは SwiftData の保存済みエンティティ名を壊さないため(UI 文言は「シリーズ」)
 - `WorkoutMenu` は入力の雛形。記録実体は常に Session + ExerciseLog
+- トレーニングだけ「記録開始」でタイマー画面ではなく記録フォームを開く(計測しながら書き込む運用)。終了ボタンで開始からの経過時間を実施時間として保存し、`TrainingSummaryView` でその日の内容をスクショ共有用に表示する
+- 入力欄を UIViewRepresentable(UITextField)で包むと List の行内でタップを受け取れない。数値欄は SwiftUI の TextField + FocusState で実装する
 - 起動時のデータ移行・プリセット投入は `TrackStackApp.setupVersion` で初回のみ実行する。毎回走らせると起動のたびに全レコードをフェッチすることになるため、プリセットを追加したときだけこの版数を上げる
 - 集計ロジックは `Shared/StatsCalculator.swift` に純粋関数で分離(ユニットテスト対象)
 - UI 文言は日本語

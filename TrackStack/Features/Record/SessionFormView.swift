@@ -14,6 +14,10 @@ struct SessionFormView: View {
     @Query(sort: \PodcastShow.createdAt, order: .reverse) private var shows: [PodcastShow]
 
     private let sessionToEdit: Session?
+    /// 「記録開始」から始めたトレーニング。終了ボタンを出し、実施時間を経過時間から決める。
+    private let isLiveTraining: Bool
+    /// 終了後に表示する共有用サマリー(その日のトレーニング全体)
+    var onFinishTraining: ((Date) -> Void)?
 
     @State private var category: ActivityCategory
     @State private var startedAt: Date
@@ -31,6 +35,9 @@ struct SessionFormView: View {
     @State private var exerciseDrafts: [ExerciseDraft]
     @State private var menuName: String?
     @State private var showingExercisePicker = false
+    @State private var showingFinishConfirm = false
+    /// 経過時間の表示を毎分更新するための現在時刻
+    @State private var now = Date()
 
     // 新聞
     @State private var clipDrafts: [ArticleClipDraft]
@@ -48,9 +55,13 @@ struct SessionFormView: View {
         sessionToEdit: Session? = nil,
         initialCategory: ActivityCategory? = nil,
         initialStartedAt: Date? = nil,
-        initialDurationMinutes: Int? = nil
+        initialDurationMinutes: Int? = nil,
+        isLiveTraining: Bool = false,
+        onFinishTraining: ((Date) -> Void)? = nil
     ) {
         self.sessionToEdit = sessionToEdit
+        self.isLiveTraining = isLiveTraining
+        self.onFinishTraining = onFinishTraining
         // 新規記録の既定は読書。読書を非表示にしている場合は有効なカテゴリの先頭にする
         let fallback = EnabledCategories.load().first ?? .reading
         let defaultCategory = EnabledCategories.load().contains(.reading) ? .reading : fallback
@@ -105,13 +116,40 @@ struct SessionFormView: View {
                 }
             }
             .sheet(isPresented: $showingExercisePicker) {
-                ExercisePickerView { exercise in
-                    exerciseDrafts.append(
-                        ExerciseDraft(name: exercise.name, bodyPart: exercise.bodyPart)
-                    )
+                ExercisePickerView(
+                    onSelect: { exercise in
+                        exerciseDrafts.append(
+                            ExerciseDraft(name: exercise.name, bodyPart: exercise.bodyPart)
+                        )
+                    },
+                    onSelectMenu: { menu in
+                        apply(menu)
+                    }
+                )
+            }
+            .confirmationDialog(
+                "トレーニングを終了しますか?",
+                isPresented: $showingFinishConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("終了する") { finishTraining() }
+                Button("キャンセル", role: .cancel) {}
+            } message: {
+                Text("開始からの経過時間 \(Formatters.duration(minutes: elapsedMinutes)) を実施時間として記録します")
+            }
+            .task {
+                // 経過時間の表示を1分ごとに更新する
+                while !Task.isCancelled {
+                    now = Date()
+                    try? await Task.sleep(for: .seconds(30))
                 }
             }
         }
+    }
+
+    /// 開始からの経過分。1分未満でも0分にならないよう最低1分にする。
+    private var elapsedMinutes: Int {
+        max(1, Int(now.timeIntervalSince(startedAt) / 60))
     }
 
     // MARK: - Sections
@@ -214,8 +252,6 @@ struct SessionFormView: View {
             }
         }
 
-        IntervalTimerSection()
-
         ExerciseDraftSections(drafts: $exerciseDrafts)
 
         Section {
@@ -223,6 +259,24 @@ struct SessionFormView: View {
                 showingExercisePicker = true
             } label: {
                 Label("種目を追加", systemImage: "plus")
+            }
+        }
+
+        // インターバルタイマーは種目入力のあと(「種目を追加」の下)に置く
+        IntervalTimerSection()
+
+        if isLiveTraining {
+            Section {
+                Button {
+                    showingFinishConfirm = true
+                } label: {
+                    Label("トレーニングを終了", systemImage: "flag.checkered")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(ActivityCategory.training.color)
+            } footer: {
+                Text("開始からの経過時間(\(Formatters.duration(minutes: elapsedMinutes)))を実施時間として記録します")
             }
         }
     }
@@ -312,7 +366,7 @@ struct SessionFormView: View {
 
     private var noteSection: some View {
         Section("メモ") {
-            TextField("何をした?", text: $note, axis: .vertical)
+            TextField("書きたいことを書いておこう", text: $note, axis: .vertical)
                 .lineLimit(3...6)
         }
     }
@@ -342,7 +396,18 @@ struct SessionFormView: View {
             .map(ExerciseDraft.init(log:))
     }
 
-    private func save() {
+    /// 「トレーニングを終了」。開始からの経過時間を実施時間として保存し、
+    /// 終了時刻(開始 + 実施時間)がその時点になるようにする。
+    private func finishTraining() {
+        // @State を書き換えた直後に読み返すと古い値が返るため、実施時間は引数で渡す
+        let minutes = elapsedMinutes
+        durationMinutes = minutes
+        save(durationOverride: minutes)
+        onFinishTraining?(startedAt.addingTimeInterval(TimeInterval(minutes * 60)))
+    }
+
+    private func save(durationOverride: Int? = nil) {
+        let duration = durationOverride ?? durationMinutes
         let trimmedNote = note.trimmingCharacters(in: .whitespacesAndNewlines)
 
         let session: Session
@@ -350,13 +415,13 @@ struct SessionFormView: View {
             session = existing
             session.category = category
             session.startedAt = startedAt
-            session.durationMinutes = durationMinutes
+            session.durationMinutes = duration
             session.note = trimmedNote.isEmpty ? nil : trimmedNote
         } else {
             session = Session(
                 category: category,
                 startedAt: startedAt,
-                durationMinutes: durationMinutes,
+                durationMinutes: duration,
                 note: trimmedNote.isEmpty ? nil : trimmedNote
             )
             context.insert(session)

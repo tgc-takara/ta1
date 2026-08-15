@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import AudioToolbox
 
 /// インターバルタイマーのプリセット秒数(UserDefaults 保存)。
 /// タイマー本体(IntervalTimerSection)と設定画面(IntervalPresetSettingsView)で共有する。
@@ -36,6 +37,8 @@ struct IntervalTimerSection: View {
     @State private var endDate: Date?
     /// 終了ハプティクスを一度だけ発火させるためのフラグ
     @State private var hasFiredHaptic = false
+    /// カウントダウン音を秒ごとに一度だけ鳴らすための、最後に鳴らした残り秒
+    @State private var lastBeepedRemaining: Int?
 
     init() {
         let presets = IntervalTimerPresets.load()
@@ -123,12 +126,23 @@ struct IntervalTimerSection: View {
                         .monospacedDigit()
                         .frame(maxWidth: .infinity)
                         .contentTransition(.numericText())
+                        .onChange(of: remaining, initial: true) { _, newValue in
+                            beepIfNeeded(remaining: newValue)
+                        }
 
                     HStack(spacing: 12) {
                         Button {
-                            self.endDate = endDate.addingTimeInterval(30)
+                            self.endDate = endDate.addingTimeInterval(-15)
                         } label: {
-                            Label("+30秒", systemImage: "plus")
+                            Label("15秒", systemImage: "minus")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+
+                        Button {
+                            self.endDate = endDate.addingTimeInterval(15)
+                        } label: {
+                            Label("15秒", systemImage: "plus")
                                 .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.bordered)
@@ -181,21 +195,43 @@ struct IntervalTimerSection: View {
         selectedSeconds = seconds
         UserDefaults.standard.set(seconds, forKey: Self.userDefaultsKey)
         hasFiredHaptic = false
+        lastBeepedRemaining = nil
         endDate = Date().addingTimeInterval(TimeInterval(seconds))
     }
 
     private func stop() {
         endDate = nil
         hasFiredHaptic = false
+        lastBeepedRemaining = nil
+    }
+
+    /// ラスト3秒(3・2・1)で1回ずつ予告音を鳴らす。同じ秒で二重に鳴らさない。
+    private func beepIfNeeded(remaining: Int) {
+        guard Self.shouldBeep(remaining: remaining) else { return }
+        guard lastBeepedRemaining != remaining else { return }
+        lastBeepedRemaining = remaining
+        AudioServicesPlaySystemSound(Self.countdownSoundID)
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
     }
 
     private func handleFinished() {
         guard !hasFiredHaptic else { return }
         hasFiredHaptic = true
+        // 終了音は予告音と別の音にして、鳴り終わりが分かるようにする
+        AudioServicesPlaySystemSound(Self.finishSoundID)
         UINotificationFeedbackGenerator().notificationOccurred(.success)
     }
 
+    /// 予告音(Tink)と終了音(Alert)。システムサウンドなので追加音源を持たない。
+    private static let countdownSoundID: SystemSoundID = 1057
+    private static let finishSoundID: SystemSoundID = 1005
+
     // MARK: - 純粋関数(テスト対象)
+
+    /// 予告音を鳴らす残り秒か(ラスト3秒: 3・2・1)。0 は終了音の担当なので鳴らさない。
+    static func shouldBeep(remaining: Int) -> Bool {
+        (1...3).contains(remaining)
+    }
 
     /// 現在時刻と終了予定時刻から残り秒を計算する。切り上げ、負値(過ぎている)なら 0。
     static func remainingSeconds(now: Date, endDate: Date) -> Int {

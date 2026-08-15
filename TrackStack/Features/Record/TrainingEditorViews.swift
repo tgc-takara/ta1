@@ -18,7 +18,10 @@ struct ExerciseDraftSections: View {
                 }
             } header: {
                 HStack {
-                    Label(draft.name, systemImage: draft.bodyPart.symbolName)
+                    // アイコンは部位色、種目名は通常色(Label だと両方が同じ色になるため分ける)
+                    Image(systemName: draft.bodyPart.symbolName)
+                        .foregroundStyle(draft.bodyPart.color)
+                    Text(draft.name)
                     Text(draft.bodyPart.label)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
@@ -47,6 +50,8 @@ struct SetsEditorView: View {
         ForEach($sets) { $set in
             let index = sets.firstIndex(where: { $0.id == set.id }) ?? 0
             SetRow(set: $set, index: index)
+                // セットが縦に並ぶため、行の上下余白を詰めて一覧性を上げる
+                .listRowInsets(EdgeInsets(top: 2, leading: 16, bottom: 2, trailing: 16))
         }
         .onDelete { sets.remove(atOffsets: $0) }
 
@@ -60,20 +65,18 @@ struct SetsEditorView: View {
     }
 }
 
-/// セット1件分の入力行。通常の文字サイズでは横一列、Dynamic Type 拡大時は
-/// 横並びが画面幅に収まらなくなるため ViewThatFits で2段組みに自動的に切り替える。
+/// セット1件分の入力行。通常の文字サイズでは横一列、アクセシビリティ文字サイズでは
+/// 横並びが収まらないため2段組みにする。
+/// (ViewThatFits は両方の枝を保持し、UITextField を包んだ入力欄のタップを
+///  取りこぼすため使わない)
 private struct SetRow: View {
     @Binding var set: SetRecord
     let index: Int
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 6) {
-                labelAndArmToggle
-                Spacer()
-                signToggle
-                valueFields
-            }
+        if dynamicTypeSize.isAccessibilitySize {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 6) {
                     labelAndArmToggle
@@ -85,19 +88,31 @@ private struct SetRow: View {
                     valueFields
                 }
             }
+        } else {
+            HStack(spacing: 6) {
+                labelAndArmToggle
+                Spacer()
+                signToggle
+                valueFields
+            }
         }
     }
 
     @ViewBuilder
     private var labelAndArmToggle: some View {
-        Text("セット\(index + 1)")
+        // 1行に収めるため番号だけにする(「セット」の語はセクション文脈から自明)
+        Text("\(index + 1)")
             .foregroundStyle(.secondary)
             .font(.subheadline)
+            .monospacedDigit()
+            .frame(minWidth: 14, alignment: .leading)
 
+        // 両手/片手は色で見分ける(藍=両手 / 朱=片手)
         Button(set.isSingleArm ? "片手" : "両手") {
             set.isSingleArm.toggle()
         }
         .buttonStyle(.bordered)
+        .tint(set.isSingleArm ? ActivityCategory.media.color : Theme.ai)
         .font(.caption)
     }
 
@@ -110,7 +125,7 @@ private struct SetRow: View {
         } label: {
             Image(systemName: set.weightKg < 0 ? "minus.circle.fill" : "plusminus.circle")
                 .foregroundStyle(set.weightKg < 0 ? Color.orange : Color.secondary)
-                .frame(width: 44, height: 44)
+                .frame(width: 40, height: 44)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.borderless)
@@ -118,17 +133,15 @@ private struct SetRow: View {
 
     @ViewBuilder
     private var valueFields: some View {
-        TextField("kg", value: $set.weightKg, format: .number)
-            .keyboardType(.decimalPad)
-            .multilineTextAlignment(.trailing)
-            .frame(width: 60)
-        Text("kg ×")
+        WeightField(value: $set.weightKg)
+            .frame(width: 56)
+        Text("kg")
+            .font(.subheadline)
             .foregroundStyle(.secondary)
-        TextField("回", value: $set.reps, format: .number)
-            .keyboardType(.numberPad)
-            .multilineTextAlignment(.trailing)
-            .frame(width: 44)
+        RepsField(value: $set.reps)
+            .frame(width: 40)
         Text("回")
+            .font(.subheadline)
             .foregroundStyle(.secondary)
     }
 }
@@ -142,9 +155,7 @@ struct CardioFieldsView: View {
         HStack {
             Text("距離")
             Spacer()
-            TextField("0", value: $distanceKm, format: .number)
-                .keyboardType(.decimalPad)
-                .multilineTextAlignment(.trailing)
+            WeightField(value: $distanceKm, placeholder: "0")
                 .frame(width: 70)
             Text("km")
                 .foregroundStyle(.secondary)
@@ -152,9 +163,7 @@ struct CardioFieldsView: View {
         HStack {
             Text("時間")
             Spacer()
-            TextField("0", value: $durationMinutes, format: .number)
-                .keyboardType(.numberPad)
-                .multilineTextAlignment(.trailing)
+            RepsField(value: $durationMinutes, placeholder: "0")
                 .frame(width: 70)
             Text("分")
                 .foregroundStyle(.secondary)
@@ -167,8 +176,11 @@ struct ExercisePickerView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \Exercise.createdAt) private var exercises: [Exercise]
+    @Query(sort: \WorkoutMenu.createdAt, order: .reverse) private var menus: [WorkoutMenu]
 
     let onSelect: (Exercise) -> Void
+    /// メニューを選んだときの処理。指定しなければメニュー欄を出さない。
+    var onSelectMenu: ((WorkoutMenu) -> Void)?
 
     @State private var newName = ""
     @State private var newBodyPart: BodyPart = .chest
@@ -186,6 +198,26 @@ struct ExercisePickerView: View {
                         .listRowInsets(EdgeInsets())
                         .listRowBackground(Color.clear)
                         .id("top")
+
+                    if let onSelectMenu, !menus.isEmpty {
+                        Section("メニューから") {
+                            ForEach(menus) { menu in
+                                Button {
+                                    onSelectMenu(menu)
+                                    dismiss()
+                                } label: {
+                                    HStack {
+                                        Label(menu.name, systemImage: "list.bullet.rectangle")
+                                            .foregroundStyle(.primary)
+                                        Spacer()
+                                        Text("\(menu.items.count)種目")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                            }
+                        }
+                    }
 
                     ForEach(BodyPart.allCases) { part in
                         let items = exercises.filter { $0.bodyPart == part }

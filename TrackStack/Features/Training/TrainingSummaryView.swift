@@ -1,0 +1,185 @@
+import SwiftUI
+import SwiftData
+import UIKit
+
+/// トレーニング終了後に出す、その日のまとめ画面。
+/// スクリーンショットを撮ってSNSに貼れるよう、カード1枚に収まるレイアウトにする。
+struct TrainingSummaryView: View {
+    /// このまとめの対象日(終了時刻の属する日)
+    let date: Date
+
+    @Environment(\.dismiss) private var dismiss
+    @Query(sort: \Session.startedAt) private var sessions: [Session]
+
+    /// その日のトレーニング記録(1日に複数回やった場合もまとめて1枚にする)
+    private var todayTraining: [Session] {
+        StatsCalculator.sessions(sessions, on: date)
+            .filter { $0.category == .training }
+            .sorted { $0.startedAt < $1.startedAt }
+    }
+
+    private var totalMinutes: Int {
+        StatsCalculator.totalMinutes(todayTraining)
+    }
+
+    /// 種目ごとにセットをまとめた表示用の行
+    private var exerciseLines: [(name: String, bodyPart: BodyPart, detail: String)] {
+        todayTraining
+            .flatMap { $0.exerciseLogs }
+            .sorted { $0.order < $1.order }
+            .map { log in
+                (name: log.exerciseName, bodyPart: log.bodyPart, detail: Self.detail(of: log))
+            }
+    }
+
+    private var endedAt: Date {
+        todayTraining
+            .map { $0.startedAt.addingTimeInterval(TimeInterval($0.durationMinutes * 60)) }
+            .max() ?? date
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 20) {
+                    summaryCard
+                    shareButtons
+                }
+                .padding()
+            }
+            .background(Theme.paper)
+            .navigationTitle("お疲れさまでした")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("閉じる") { dismiss() }
+                }
+            }
+        }
+    }
+
+    // MARK: - まとめカード(スクショ対象)
+
+    private var summaryCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text(Formatters.dayHeader(date))
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.inkSecondary)
+                Spacer()
+                Text("ひとつみ")
+                    .font(.caption)
+                    .foregroundStyle(Theme.inkSecondary)
+            }
+
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Image(systemName: ActivityCategory.training.symbolName)
+                    .foregroundStyle(ActivityCategory.training.color)
+                Text(Formatters.duration(minutes: totalMinutes))
+                    .font(.mincho(size: 40))
+                    .fontDesign(.serif)
+                    .monospacedDigit()
+                    .foregroundStyle(Theme.ink)
+                Spacer()
+                Text("\(Formatters.time(endedAt)) 終了")
+                    .font(.caption)
+                    .foregroundStyle(Theme.inkSecondary)
+            }
+
+            if exerciseLines.isEmpty {
+                Text("種目の記録はありません")
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.inkSecondary)
+            } else {
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(Array(exerciseLines.enumerated()), id: \.offset) { _, line in
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: line.bodyPart.symbolName)
+                                .font(.caption)
+                                .foregroundStyle(line.bodyPart.color)
+                                .frame(width: 20)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(line.name)
+                                    .font(.subheadline)
+                                if !line.detail.isEmpty {
+                                    Text(line.detail)
+                                        .font(.caption)
+                                        .foregroundStyle(Theme.inkSecondary)
+                                }
+                            }
+                            Spacer()
+                        }
+                    }
+                }
+            }
+
+            Text("今日も、ひとつ積もう。")
+                .font(.caption)
+                .foregroundStyle(Theme.inkSecondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .cardStyle()
+    }
+
+    // MARK: - 共有
+
+    private var shareButtons: some View {
+        VStack(spacing: 12) {
+            Text("スクリーンショットを撮って投稿できます")
+                .font(.caption)
+                .foregroundStyle(Theme.inkSecondary)
+
+            HStack(spacing: 12) {
+                Button {
+                    open(Self.xURL)
+                } label: {
+                    Label("Xを開く", systemImage: "arrow.up.right.square")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+
+                Button {
+                    open(Self.instagramURL)
+                } label: {
+                    Label("Instagramを開く", systemImage: "arrow.up.right.square")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+    }
+
+    /// アプリが入っていれば専用スキームで、なければ Web で開く
+    private static let xURL = (app: URL(string: "twitter://post"), web: URL(string: "https://x.com/compose/post")!)
+    private static let instagramURL = (app: URL(string: "instagram://app"), web: URL(string: "https://www.instagram.com/")!)
+
+    private func open(_ urls: (app: URL?, web: URL)) {
+        if let app = urls.app, UIApplication.shared.canOpenURL(app) {
+            UIApplication.shared.open(app)
+        } else {
+            UIApplication.shared.open(urls.web)
+        }
+    }
+
+    /// 「60kg×10, 60kg×8(片手)」/ 有酸素は「3.0km 20分」
+    static func detail(of log: ExerciseLog) -> String {
+        if log.bodyPart.isCardio {
+            var parts: [String] = []
+            if let distance = log.distanceKm, distance > 0 {
+                parts.append(String(format: "%.1fkm", distance))
+            }
+            if let minutes = log.durationMinutes, minutes > 0 {
+                parts.append("\(minutes)分")
+            }
+            return parts.joined(separator: " ")
+        }
+        return log.sets.map { set in
+            let weight = set.weightKg == set.weightKg.rounded()
+                ? String(Int(set.weightKg))
+                : String(set.weightKg)
+            return "\(weight)kg×\(set.reps)\(set.isSingleArm ? "(片手)" : "")"
+        }
+        .joined(separator: ", ")
+    }
+}

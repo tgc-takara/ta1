@@ -9,6 +9,27 @@ struct DashboardView: View {
     @State private var pendingTimerResult: PendingTimerResult?
     /// 設定で選んだ表示カテゴリ。設定画面から戻ったときに読み直す。
     @State private var enabledCategories: [ActivityCategory] = EnabledCategories.load()
+    /// トレーニングは計測画面ではなく記録フォームを開く
+    @State private var showingTrainingSheet = false
+    @State private var trainingStartedAt = Date()
+    @State private var trainingSummaryDate: TrainingSummaryDate?
+
+    /// sheet(item:) で扱うための日付ラッパー
+    private struct TrainingSummaryDate: Identifiable {
+        let id = UUID()
+        let date: Date
+    }
+
+    /// 「記録開始」から始める。トレーニングだけ記録フォーム、他はタイマー画面。
+    private func start(_ category: ActivityCategory) {
+        if category == .training {
+            trainingStartedAt = Date()
+            showingTrainingSheet = true
+        } else {
+            activeTimer.start(category: category)
+            showingTimerSheet = true
+        }
+    }
 
     /// タイマー終了後、記録フォームへプリフィルする値。Identifiable にして sheet(item:) で扱う。
     private struct PendingTimerResult: Identifiable {
@@ -57,14 +78,13 @@ struct DashboardView: View {
                     Menu {
                         ForEach(enabledCategories) { category in
                             Button {
-                                activeTimer.start(category: category)
-                                showingTimerSheet = true
+                                start(category)
                             } label: {
                                 Label(category.label, systemImage: category.symbolName)
                             }
                         }
                     } label: {
-                        Label("タイマー開始", systemImage: "timer")
+                        Label("記録開始", systemImage: "timer")
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -78,6 +98,21 @@ struct DashboardView: View {
             }
             .sheet(isPresented: $showingRecordSheet) {
                 SessionFormView()
+            }
+            .sheet(isPresented: $showingTrainingSheet) {
+                // トレーニングは計測しながら内容を書き込む運用なので、
+                // タイマー画面ではなく記録フォームを開き、終了時に経過時間を実施時間にする
+                SessionFormView(
+                    initialCategory: .training,
+                    initialStartedAt: trainingStartedAt,
+                    isLiveTraining: true,
+                    onFinishTraining: { finishedAt in
+                        trainingSummaryDate = TrainingSummaryDate(date: finishedAt)
+                    }
+                )
+            }
+            .sheet(item: $trainingSummaryDate) { summary in
+                TrainingSummaryView(date: summary.date)
             }
             .fullScreenCover(isPresented: $showingTimerSheet) {
                 TimerView(activeTimer: activeTimer) { category, startedAt, durationMinutes in
