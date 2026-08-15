@@ -26,6 +26,8 @@ xcodebuild -scheme TrackStack -destination 'platform=iOS Simulator,name=iPhone 1
 ## 設計の要点
 
 - カテゴリは5つ(読書 / トレーニング / 勉強 / 新聞 / ポッドキャスト)。`ActivityCategory` の case 順がそのまま選択肢・凡例・内訳の表示順になる
+- 使うカテゴリは設定で取捨選択できる(`Shared/EnabledCategories.swift`、既定は全表示)。非表示でもその期間に記録があるカテゴリは内訳・凡例に出す(合計と内訳を一致させるため)。各画面は `.onAppear` で設定を読み直す
+- 設定の切り替え UI に `Toggle` + カスタム `Binding` を使うと2回目以降の操作を取りこぼしたため、行タップ(Button)+チェックマークで実装している。`@State` は書き換え直後に読み返すと古い値が返るため、必ずローカル変数で新しい値を作ってから反映・保存する
 - `Session` が全カテゴリ共通の記録単位。カテゴリ固有情報(Book / Subject / ExerciseLog / ArticleClip / PodcastShow)は関連エンティティに逃がし、横断集計(合計時間・ストリーク)は Session だけで完結させる
 - enum は SwiftData に rawValue(String)で保存し、computed property で enum に変換(`categoryRaw` / `category` パターン)
 - 種目名・メニュー名は Session 側にスナップショットで保持(マスタ削除後も記録が壊れない)

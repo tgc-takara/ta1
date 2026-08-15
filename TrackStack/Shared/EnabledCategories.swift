@@ -18,9 +18,7 @@ enum EnabledCategories {
     }
 
     static func save(_ categories: [ActivityCategory]) {
-        print("SAVE \(categories.map(\.rawValue))")
         UserDefaults.standard.set(categories.map(\.rawValue), forKey: userDefaultsKey)
-        print("READBACK \(UserDefaults.standard.stringArray(forKey: userDefaultsKey) ?? [])")
     }
 
     /// 集計表示用のカテゴリ。オフにしていても、その期間に記録があるカテゴリは
