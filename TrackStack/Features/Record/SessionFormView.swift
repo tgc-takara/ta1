@@ -35,7 +35,7 @@ struct SessionFormView: View {
     // 新聞
     @State private var clipDrafts: [ArticleClipDraft]
 
-    // ポッドキャスト
+    // 動画・音声
     @State private var selectedShow: PodcastShow?
     @State private var episodeTitle: String
 
@@ -85,8 +85,8 @@ struct SessionFormView: View {
                 case .reading: readingSection
                 case .study: studySection
                 case .training: trainingSections
-                case .newspaper: newspaperSection
-                case .podcast: podcastSection
+                case .article: articleSection
+                case .media: mediaSection
                 }
 
                 durationSection
@@ -227,8 +227,8 @@ struct SessionFormView: View {
         }
     }
 
-    /// 新聞。1回の記録に読んだ記事を何本でもぶら下げる。
-    private var newspaperSection: some View {
+    /// 記事(新聞・Web記事・レポート/白書)。1回の記録に読んだ記事を何本でもぶら下げる。
+    private var articleSection: some View {
         Section {
             ForEach($clipDrafts) { $draft in
                 VStack(alignment: .leading, spacing: 6) {
@@ -261,25 +261,28 @@ struct SessionFormView: View {
         }
     }
 
-    /// ポッドキャスト。番組はライブラリで管理するマスタから選ぶ。
-    private var podcastSection: some View {
+    /// 動画・音声(ポッドキャスト / 動画講座 / セミナー)。
+    /// シリーズ(番組名・チャンネル名・セミナー名)はライブラリで管理するマスタから選ぶ。
+    private var mediaSection: some View {
         Section {
-            Picker("番組", selection: $selectedShow) {
+            Picker("シリーズ", selection: $selectedShow) {
                 Text("選択なし").tag(nil as PodcastShow?)
                 ForEach(shows) { show in
                     Text(show.name).tag(show as PodcastShow?)
                 }
             }
 
-            TextField("エピソード名(任意)", text: $episodeTitle)
+            TextField("タイトル(任意)", text: $episodeTitle)
 
             if shows.isEmpty {
-                Text("ライブラリのポッドキャストタブから番組を追加できます")
+                Text("ライブラリの動画・音声タブからシリーズを追加できます")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
         } header: {
-            Text("ポッドキャスト")
+            Text("動画・音声")
+        } footer: {
+            Text("ポッドキャスト・動画講座・セミナーをまとめて記録します")
         }
     }
 
@@ -396,14 +399,14 @@ struct SessionFormView: View {
                 log.session = session
                 context.insert(log)
             }
-        case .newspaper:
+        case .article:
             // 見出しが空のクリップは入力途中とみなして保存しない
             for (index, draft) in clipDrafts.filter({ !$0.trimmedTitle.isEmpty }).enumerated() {
                 let clip = draft.makeClip(order: index)
                 clip.session = session
                 context.insert(clip)
             }
-        case .podcast:
+        case .media:
             session.podcastShow = selectedShow
             session.episodeTitle = episodeTitle
                 .trimmingCharacters(in: .whitespacesAndNewlines)

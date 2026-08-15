@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// ライブラリ(本棚・トレーニングメニュー/種目・科目・記事クリップ・ポッドキャスト番組)
+/// ライブラリ(本棚・トレーニングメニュー/種目・科目・記事クリップ・動画/音声のシリーズ)
 struct LibraryView: View {
     @State private var selection: ActivityCategory = EnabledCategories.load().first ?? .reading
     @State private var categories: [ActivityCategory] = EnabledCategories.load()
@@ -32,9 +32,9 @@ struct LibraryView: View {
                     TrainingLibraryView()
                 case .study:
                     SubjectListView()
-                case .newspaper:
+                case .article:
                     ArticleClipListView()
-                case .podcast:
+                case .media:
                     PodcastShowListView()
                 }
             }

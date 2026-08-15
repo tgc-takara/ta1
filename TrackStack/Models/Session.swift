@@ -30,13 +30,19 @@ final class Session {
     @Relationship(deleteRule: .cascade, inverse: \ArticleClip.session)
     var articleClips: [ArticleClip]
 
-    // MARK: ポッドキャスト
+    // MARK: 動画・音声
+    /// シリーズ(番組名 / 動画講座名 / セミナー名)
     var podcastShow: PodcastShow?
-    /// エピソード名(任意)
+    /// 回・エピソードのタイトル(任意)
     var episodeTitle: String?
 
+    /// 旧カテゴリ("newspaper" / "podcast")で保存された記録も、統合後のカテゴリとして読める
     var category: ActivityCategory {
-        get { ActivityCategory(rawValue: categoryRaw) ?? .study }
+        get {
+            ActivityCategory(rawValue: categoryRaw)
+                ?? ActivityCategory.legacyRawValues[categoryRaw]
+                ?? .study
+        }
         set { categoryRaw = newValue.rawValue }
     }
 

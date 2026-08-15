@@ -24,8 +24,17 @@ final class EnabledCategoriesTests: XCTestCase {
 
     /// 保存順に関わらず allCases の並びに揃える(選択肢の順序を安定させるため)
     func testLoadKeepsCanonicalOrder() {
-        EnabledCategories.save([.podcast, .reading])
-        XCTAssertEqual(EnabledCategories.load(), [.reading, .podcast])
+        EnabledCategories.save([.media, .reading])
+        XCTAssertEqual(EnabledCategories.load(), [.reading, .media])
+    }
+
+    /// 統合前のカテゴリ名で保存された設定を、統合後のカテゴリとして引き継ぐ
+    func testLegacyRawValuesAreCarriedOver() {
+        UserDefaults.standard.set(
+            ["reading", "newspaper", "podcast"],
+            forKey: EnabledCategories.userDefaultsKey
+        )
+        XCTAssertEqual(EnabledCategories.load(), [.reading, .article, .media])
     }
 
     func testEmptySelectionFallsBackToAllCategories() {

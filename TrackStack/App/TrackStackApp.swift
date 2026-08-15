@@ -8,7 +8,8 @@ struct TrackStackApp: App {
 
     /// 起動時のデータ準備(旧データ移行・プリセット投入)を何回目まで済ませたか。
     /// この値を上げたときだけ再実行し、通常の起動では SwiftData に一切触らない。
-    private static let setupVersion = 1
+    /// 2: 新聞→記事 / ポッドキャスト→動画・音声 のカテゴリ統合
+    private static let setupVersion = 2
     private static let setupVersionKey = "startupSetupVersion"
 
     init() {
@@ -34,6 +35,7 @@ struct TrackStackApp: App {
 
         let context = ModelContext(container)
         migrateLegacyKinds(in: context)
+        migrateLegacyCategories(in: context)
         seedPresets(in: context)
         seedSubjectPresets(in: context)
         if context.hasChanges {
@@ -104,6 +106,17 @@ struct TrackStackApp: App {
 
     /// 旧2分類(筋トレ/有酸素)時代の kindRaw("strength")を部位分類へ移行する。
     /// "cardio" は新分類でもそのまま有効なため対象外。
+    /// 統合前のカテゴリ("newspaper" / "podcast")で保存された記録を、
+    /// 統合後の "article" / "media" に置き換える。記録そのものは消さない。
+    private static func migrateLegacyCategories(in context: ModelContext) {
+        guard let sessions = try? context.fetch(FetchDescriptor<Session>()) else { return }
+        for session in sessions {
+            if let migrated = ActivityCategory.legacyRawValues[session.categoryRaw] {
+                session.categoryRaw = migrated.rawValue
+            }
+        }
+    }
+
     private static func migrateLegacyKinds(in context: ModelContext) {
         if let exercises = try? context.fetch(FetchDescriptor<Exercise>()) {
             for exercise in exercises where BodyPart(rawValue: exercise.kindRaw) == nil {

@@ -1,7 +1,7 @@
 import SwiftUI
 import SwiftData
 
-/// ポッドキャスト番組の一覧(累積再生時間・エピソード数付き)
+/// 動画・音声のシリーズ一覧(累積時間・本数付き)
 struct PodcastShowListView: View {
     @Environment(\.modelContext) private var context
     @Query(sort: \PodcastShow.createdAt, order: .reverse) private var shows: [PodcastShow]
@@ -13,9 +13,9 @@ struct PodcastShowListView: View {
         Group {
             if shows.isEmpty {
                 ContentUnavailableView(
-                    "番組がありません",
+                    "シリーズがありません",
                     systemImage: "headphones",
-                    description: Text("右上の + から番組を追加できます")
+                    description: Text("右上の + からシリーズを追加できます")
                 )
             } else {
                 List {
@@ -62,7 +62,7 @@ struct PodcastShowRowView: View {
                 Text(show.name)
                     .font(.body)
                 if !show.sessions.isEmpty {
-                    Text("\(show.sessions.count)エピソード")
+                    Text("\(show.sessions.count)本")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -77,7 +77,7 @@ struct PodcastShowRowView: View {
     }
 }
 
-/// 番組の追加・編集フォーム。編集時は聴いた履歴(セッション由来)も表示する。
+/// シリーズの追加・編集フォーム。編集時は見聴きした履歴(セッション由来)も表示する。
 struct PodcastShowFormView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
@@ -109,10 +109,10 @@ struct PodcastShowFormView: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("番組名", text: $name)
+                    TextField("シリーズ名", text: $name)
                     if let show = showToEdit {
                         LabeledContent(
-                            "再生時間",
+                            "視聴時間",
                             value: Formatters.duration(minutes: StatsCalculator.totalMinutes(show.sessions))
                         )
                     }
@@ -127,13 +127,13 @@ struct PodcastShowFormView: View {
                     episodeSection(of: show)
 
                     Section {
-                        Button("この番組を削除", role: .destructive) {
+                        Button("このシリーズを削除", role: .destructive) {
                             showingDeleteConfirm = true
                         }
                     }
                 }
             }
-            .navigationTitle(showToEdit == nil ? "番組を追加" : "番組を編集")
+            .navigationTitle(showToEdit == nil ? "シリーズを追加" : "シリーズを編集")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -144,7 +144,7 @@ struct PodcastShowFormView: View {
                         .disabled(trimmedName.isEmpty)
                 }
             }
-            .confirmationDialog("この番組を削除しますか?", isPresented: $showingDeleteConfirm, titleVisibility: .visible) {
+            .confirmationDialog("このシリーズを削除しますか?", isPresented: $showingDeleteConfirm, titleVisibility: .visible) {
                 Button("削除", role: .destructive) {
                     if let show = showToEdit {
                         context.delete(show)
@@ -153,12 +153,12 @@ struct PodcastShowFormView: View {
                 }
                 Button("キャンセル", role: .cancel) {}
             } message: {
-                Text("聴いた記録は残り、番組との紐付けだけが外れます")
+                Text("記録は残り、シリーズとの紐付けだけが外れます")
             }
         }
     }
 
-    /// 聴いた記録(記録タブで追加したセッション)の履歴。表示専用。
+    /// 見聴きした記録(記録タブで追加したセッション)の履歴。表示専用。
     private func episodeSection(of show: PodcastShow) -> some View {
         let sessions = show.sessions.sorted { $0.startedAt > $1.startedAt }
         return Section {
@@ -186,9 +186,9 @@ struct PodcastShowFormView: View {
                 }
             }
         } header: {
-            Text("聴いた記録")
+            Text("見聴きした記録")
         } footer: {
-            Text("記録タブでこの番組を選んで追加した記録がここに蓄積されます")
+            Text("記録タブでこのシリーズを選んで追加した記録がここに蓄積されます")
         }
     }
 

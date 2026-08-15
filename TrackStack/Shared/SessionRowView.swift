@@ -45,10 +45,10 @@ struct SessionRowView: View {
             return session.menuName ?? "トレーニング"
         case .study:
             return session.subject?.name ?? "勉強"
-        case .newspaper:
-            return "新聞"
-        case .podcast:
-            return session.podcastShow?.name ?? "ポッドキャスト"
+        case .article:
+            return "記事"
+        case .media:
+            return session.podcastShow?.name ?? "動画・音声"
         }
     }
 
@@ -66,14 +66,14 @@ struct SessionRowView: View {
             }
         case .study:
             break
-        case .newspaper:
+        case .article:
             let titles = session.articleClips
                 .sorted { $0.order < $1.order }
                 .map(\.title)
             if !titles.isEmpty {
                 return titles.joined(separator: "・")
             }
-        case .podcast:
+        case .media:
             if let episode = session.episodeTitle, !episode.isEmpty {
                 return episode
             }

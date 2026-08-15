@@ -51,7 +51,7 @@ final class ExportServiceTests: XCTestCase {
         let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
 
         XCTAssertEqual(json["app"] as? String, "hitotsumi")
-        XCTAssertEqual(json["schemaVersion"] as? Int, 2)
+        XCTAssertEqual(json["schemaVersion"] as? Int, 3)
         let sessions = try XCTUnwrap(json["sessions"] as? [[String: Any]])
         XCTAssertEqual(sessions.count, 2)
     }
@@ -120,8 +120,8 @@ final class ExportServiceTests: XCTestCase {
         XCTAssertEqual(sessionJSON["note"] as? String, "第1章まで")
     }
 
-    func testJSONNewspaperSessionIncludesArticleClips() throws {
-        let session = Session(category: .newspaper, startedAt: Date(), durationMinutes: 20)
+    func testJSONArticleSessionIncludesClips() throws {
+        let session = Session(category: .article, startedAt: Date(), durationMinutes: 20)
         context.insert(session)
         let first = ArticleClip(title: "日銀、利上げ判断へ", urlString: "https://example.com/a", order: 0)
         first.session = session
@@ -144,26 +144,26 @@ final class ExportServiceTests: XCTestCase {
         XCTAssertEqual(articles.last?["memo"] as? String, "後で読み返す")
     }
 
-    func testJSONPodcastSessionIncludesShowAndEpisode() throws {
+    func testJSONMediaSessionIncludesSeriesAndTitle() throws {
         let show = PodcastShow(name: "ゆる言語学ラジオ")
         context.insert(show)
-        let session = Session(category: .podcast, startedAt: Date(), durationMinutes: 55)
+        let session = Session(category: .media, startedAt: Date(), durationMinutes: 55)
         session.podcastShow = show
         session.episodeTitle = "第100回"
         context.insert(session)
 
         let data = try ExportService.makeJSON(
             sessions: [session], books: [], subjects: [], exercises: [],
-            podcastShows: [show],
+            mediaSeries: [show],
             exportedAt: Date()
         )
         let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
         let sessions = try XCTUnwrap(json["sessions"] as? [[String: Any]])
-        let podcast = try XCTUnwrap(sessions.first?["podcast"] as? [String: Any])
+        let media = try XCTUnwrap(sessions.first?["media"] as? [String: Any])
 
-        XCTAssertEqual(podcast["show"] as? String, "ゆる言語学ラジオ")
-        XCTAssertEqual(podcast["episode"] as? String, "第100回")
-        let shows = try XCTUnwrap(json["podcastShows"] as? [[String: Any]])
+        XCTAssertEqual(media["series"] as? String, "ゆる言語学ラジオ")
+        XCTAssertEqual(media["title"] as? String, "第100回")
+        let shows = try XCTUnwrap(json["mediaSeries"] as? [[String: Any]])
         XCTAssertEqual(shows.first?["name"] as? String, "ゆる言語学ラジオ")
     }
 
@@ -262,9 +262,9 @@ final class ExportServiceTests: XCTestCase {
         XCTAssertFalse(day2File.content.contains("## 💪 トレーニング"))
     }
 
-    func testMarkdownNewspaperClipsBecomeLinks() throws {
+    func testMarkdownArticleClipsBecomeLinks() throws {
         let day = jstCalendar.date(from: DateComponents(year: 2026, month: 8, day: 1, hour: 7))!
-        let session = Session(category: .newspaper, startedAt: day, durationMinutes: 20)
+        let session = Session(category: .article, startedAt: day, durationMinutes: 20)
         context.insert(session)
         let linked = ArticleClip(title: "日銀、利上げ判断へ", urlString: "https://example.com/a", order: 0)
         linked.session = session
@@ -276,16 +276,16 @@ final class ExportServiceTests: XCTestCase {
         let files = ExportService.makeMarkdownFiles(sessions: [session], calendar: jstCalendar)
         let file = try XCTUnwrap(files.first)
 
-        XCTAssertTrue(file.content.contains("## 📰 新聞 20分"))
+        XCTAssertTrue(file.content.contains("## 📰 記事 20分"))
         XCTAssertTrue(file.content.contains("- [日銀、利上げ判断へ](https://example.com/a)"))
         XCTAssertTrue(file.content.contains("- 半導体投資が加速"))
     }
 
-    func testMarkdownPodcastLineIncludesShowAndEpisode() throws {
+    func testMarkdownMediaLineIncludesSeriesAndTitle() throws {
         let day = jstCalendar.date(from: DateComponents(year: 2026, month: 8, day: 1, hour: 8))!
         let show = PodcastShow(name: "ゆる言語学ラジオ")
         context.insert(show)
-        let session = Session(category: .podcast, startedAt: day, durationMinutes: 55)
+        let session = Session(category: .media, startedAt: day, durationMinutes: 55)
         session.podcastShow = show
         session.episodeTitle = "第100回"
         context.insert(session)
@@ -293,7 +293,7 @@ final class ExportServiceTests: XCTestCase {
         let files = ExportService.makeMarkdownFiles(sessions: [session], calendar: jstCalendar)
         let file = try XCTUnwrap(files.first)
 
-        XCTAssertTrue(file.content.contains("## 🎧 ポッドキャスト 55分"))
+        XCTAssertTrue(file.content.contains("## 🎧 動画・音声 55分"))
         XCTAssertTrue(file.content.contains("- ゆる言語学ラジオ 第100回"))
     }
 

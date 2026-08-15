@@ -1,7 +1,7 @@
 import SwiftUI
 import SwiftData
 
-/// 新聞の記録に紐づく記事クリップを、読んだ日ごとにまとめて一覧する。
+/// 記事の記録(新聞・Web記事・レポート)に紐づくクリップを、読んだ日ごとにまとめて一覧する。
 /// クリップの追加は記録側(記録を追加 → 新聞)で行い、ここでは閲覧と削除だけを担う。
 struct ArticleClipListView: View {
     @Environment(\.modelContext) private var context
@@ -29,7 +29,7 @@ struct ArticleClipListView: View {
                 ContentUnavailableView(
                     "クリップした記事がありません",
                     systemImage: "newspaper",
-                    description: Text("記録を追加 → 新聞 から、読んだ記事をクリップできます")
+                    description: Text("記録を追加 → 記事 から、読んだ記事をクリップできます")
                 )
             } else {
                 List {
@@ -71,7 +71,7 @@ struct ArticleClipRowView: View {
                             .font(.caption)
                     }
                 }
-                .foregroundStyle(ActivityCategory.newspaper.color)
+                .foregroundStyle(ActivityCategory.article.color)
             } else {
                 Text(clip.title)
                     .font(.body)
