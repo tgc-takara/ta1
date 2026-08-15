@@ -48,7 +48,7 @@ struct TrainingSummaryView: View {
                 .padding()
             }
             .background(Theme.paper)
-            .navigationTitle("お疲れさまでした")
+            .navigationTitle("今日のひとつみ")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
