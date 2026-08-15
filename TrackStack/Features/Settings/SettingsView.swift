@@ -5,6 +5,12 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section("表示") {
+                    NavigationLink("表示するカテゴリ") {
+                        CategoryVisibilitySettingsView()
+                    }
+                }
+                .listRowBackground(Theme.surface)
                 Section("マスタ") {
                     NavigationLink("読書ジャンル") {
                         BookGenreListView()
@@ -43,6 +49,59 @@ struct SettingsView: View {
             .background(Theme.paper)
             .navigationTitle("設定")
         }
+    }
+}
+
+/// 使うカテゴリの取捨選択。オフにしたカテゴリは記録の選択肢・ライブラリ・内訳から消える。
+/// 記録済みのデータは消えないため、あとからオンに戻せば元どおり表示される。
+struct CategoryVisibilitySettingsView: View {
+    @State private var enabled: Set<ActivityCategory> = Set(EnabledCategories.load())
+
+    var body: some View {
+        List {
+            Section {
+                // Toggle + カスタム Binding だと2回目以降の切り替えを取りこぼしたため、
+                // 行タップ(Button)+チェックマークで表現する
+                ForEach(ActivityCategory.allCases) { category in
+                    Button {
+                        toggle(category)
+                    } label: {
+                        HStack {
+                            Label(category.label, systemImage: category.symbolName)
+                                .foregroundStyle(Theme.ink)
+                            Spacer()
+                            Image(systemName: enabled.contains(category) ? "checkmark.circle.fill" : "circle")
+                                .foregroundStyle(enabled.contains(category) ? category.color : Theme.rule)
+                                .font(.title3)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            } footer: {
+                Text("タップで表示/非表示を切り替えます。非表示にしたカテゴリは記録の選択肢・ライブラリ・内訳から消えます。記録済みのデータは消えず、その期間に記録があるカテゴリは内訳に表示されます")
+            }
+            .listRowBackground(Theme.surface)
+        }
+        .scrollContentBackground(.hidden)
+        .background(Theme.paper)
+        .navigationTitle("表示するカテゴリ")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func toggle(_ category: ActivityCategory) {
+        // @State は書き換えた直後に読み返すと古い値が返ることがあるため、
+        // 必ずローカルで新しい集合を作ってから反映・保存する
+        var next = enabled
+        if next.contains(category) {
+            // 最後の1つは外せない(全部非表示だと記録できなくなるため)
+            guard next.count > 1 else { return }
+            next.remove(category)
+        } else {
+            next.insert(category)
+        }
+        enabled = next
+        EnabledCategories.save(ActivityCategory.allCases.filter(next.contains))
     }
 }
 

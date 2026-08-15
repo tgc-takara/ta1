@@ -7,6 +7,8 @@ struct DashboardView: View {
     @State private var activeTimer = ActiveTimer()
     @State private var showingTimerSheet = false
     @State private var pendingTimerResult: PendingTimerResult?
+    /// 設定で選んだ表示カテゴリ。設定画面から戻ったときに読み直す。
+    @State private var enabledCategories: [ActivityCategory] = EnabledCategories.load()
 
     /// タイマー終了後、記録フォームへプリフィルする値。Identifiable にして sheet(item:) で扱う。
     private struct PendingTimerResult: Identifiable {
@@ -40,19 +42,20 @@ struct DashboardView: View {
                     }
                     todayCard
                     weekCard
-                    WeeklyChartView(sessions: sessions)
+                    WeeklyChartView(sessions: sessions, enabledCategories: enabledCategories)
                     if !todaySessions.isEmpty {
                         recentSection
                     }
                 }
                 .padding()
             }
+            .onAppear { enabledCategories = EnabledCategories.load() }
             .background(Theme.paper)
             .navigationTitle("ひとつみ")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Menu {
-                        ForEach(ActivityCategory.allCases) { category in
+                        ForEach(enabledCategories) { category in
                             Button {
                                 activeTimer.start(category: category)
                                 showingTimerSheet = true
@@ -171,7 +174,7 @@ struct DashboardView: View {
             alignment: .leading,
             spacing: 8
         ) {
-            ForEach(ActivityCategory.allCases) { category in
+            ForEach(EnabledCategories.forDisplay(minutes: minutes, enabled: enabledCategories)) { category in
                 HStack(spacing: 4) {
                     Rectangle()
                         .fill(category.color)

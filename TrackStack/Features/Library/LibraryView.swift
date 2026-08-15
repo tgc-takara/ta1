@@ -2,7 +2,8 @@ import SwiftUI
 
 /// ライブラリ(本棚・トレーニングメニュー/種目・科目・記事クリップ・ポッドキャスト番組)
 struct LibraryView: View {
-    @State private var selection: ActivityCategory = .reading
+    @State private var selection: ActivityCategory = EnabledCategories.load().first ?? .reading
+    @State private var categories: [ActivityCategory] = EnabledCategories.load()
 
     var body: some View {
         NavigationStack {
@@ -10,11 +11,18 @@ struct LibraryView: View {
                 // カテゴリが5つあり segmented では文字が潰れるため、横スクロールのチップで選ぶ
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
-                        ForEach(ActivityCategory.allCases) { category in
+                        ForEach(categories) { category in
                             categoryChip(category)
                         }
                     }
                     .padding(.horizontal)
+                }
+                .onAppear {
+                    categories = EnabledCategories.load()
+                    // 選択中のカテゴリを設定で非表示にした場合は先頭に戻す
+                    if !categories.contains(selection), let first = categories.first {
+                        selection = first
+                    }
                 }
 
                 switch selection {

@@ -41,6 +41,8 @@ struct SessionFormView: View {
 
     // 時間プリセット(設定画面で編集可能。表示直前に再読み込みする)
     @State private var durationPresets: [Int] = DurationPresets.load()
+    // 選べるカテゴリ(設定画面で編集可能)
+    @State private var pickableCategories: [ActivityCategory] = ActivityCategory.allCases
 
     init(
         sessionToEdit: Session? = nil,
@@ -49,7 +51,10 @@ struct SessionFormView: View {
         initialDurationMinutes: Int? = nil
     ) {
         self.sessionToEdit = sessionToEdit
-        _category = State(initialValue: sessionToEdit?.category ?? initialCategory ?? .reading)
+        // 新規記録の既定は読書。読書を非表示にしている場合は有効なカテゴリの先頭にする
+        let fallback = EnabledCategories.load().first ?? .reading
+        let defaultCategory = EnabledCategories.load().contains(.reading) ? .reading : fallback
+        _category = State(initialValue: sessionToEdit?.category ?? initialCategory ?? defaultCategory)
         _startedAt = State(initialValue: sessionToEdit?.startedAt ?? initialStartedAt ?? Date())
         _durationMinutes = State(initialValue: sessionToEdit?.durationMinutes ?? initialDurationMinutes ?? 30)
         _note = State(initialValue: sessionToEdit?.note ?? "")
@@ -114,7 +119,7 @@ struct SessionFormView: View {
     private var commonSection: some View {
         Section {
             Picker("カテゴリ", selection: $category) {
-                ForEach(ActivityCategory.allCases) { category in
+                ForEach(pickableCategories) { category in
                     Label(category.label, systemImage: category.symbolName)
                         .tag(category)
                 }
@@ -122,6 +127,11 @@ struct SessionFormView: View {
             .pickerStyle(.menu)
 
             DatePicker("開始日時", selection: $startedAt)
+        }
+        .onAppear {
+            // 設定でカテゴリの表示/非表示が変わっている可能性があるため表示のたびに読み直す
+            // (編集中の記録のカテゴリは非表示でも選択肢に残す)
+            pickableCategories = EnabledCategories.forPicker(including: category)
         }
     }
 

@@ -4,6 +4,8 @@ import Charts
 /// 直近7日間(今日を最終日)のカテゴリ別積み上げ棒グラフ。
 struct WeeklyChartView: View {
     let sessions: [Session]
+    /// 設定で表示オンにしているカテゴリ(親から渡して設定変更を反映させる)
+    var enabledCategories: [ActivityCategory] = EnabledCategories.load()
 
     private var daily: [(date: Date, minutesByCategory: [ActivityCategory: Int])] {
         StatsCalculator.dailyMinutes(sessions, days: 7, endingOn: Date())
@@ -17,9 +19,20 @@ struct WeeklyChartView: View {
         let minutes: Int
     }
 
+    /// 表示するカテゴリ(設定でオフでも、7日間に記録があるものは合計が合わなくなるので含める)
+    private var visibleCategories: [ActivityCategory] {
+        let totals = daily.reduce(into: [ActivityCategory: Int]()) { result, entry in
+            for (category, minutes) in entry.minutesByCategory {
+                result[category, default: 0] += minutes
+            }
+        }
+        return EnabledCategories.forDisplay(minutes: totals, enabled: enabledCategories)
+    }
+
     private var points: [DataPoint] {
-        daily.flatMap { entry in
-            ActivityCategory.allCases.map { category in
+        let categories = visibleCategories
+        return daily.flatMap { entry in
+            categories.map { category in
                 DataPoint(date: entry.date, category: category, minutes: entry.minutesByCategory[category] ?? 0)
             }
         }
@@ -43,8 +56,8 @@ struct WeeklyChartView: View {
                     .foregroundStyle(by: .value("カテゴリ", point.category.label))
                 }
                 .chartForegroundStyleScale(
-                    domain: ActivityCategory.allCases.map(\.label),
-                    range: ActivityCategory.allCases.map(\.color)
+                    domain: visibleCategories.map(\.label),
+                    range: visibleCategories.map(\.color)
                 )
                 .chartXAxis {
                     AxisMarks(values: .stride(by: .day)) { value in

@@ -8,6 +8,7 @@ struct HistoryView: View {
     @State private var filter: ActivityCategory?
     @State private var editingSession: Session?
     @State private var viewMode: HistoryViewMode = .list
+    @State private var enabledCategories: [ActivityCategory] = EnabledCategories.load()
 
     private enum HistoryViewMode: String, CaseIterable, Identifiable {
         case list
@@ -91,6 +92,7 @@ struct HistoryView: View {
                 }
             }
             .background(Theme.paper)
+            .onAppear { enabledCategories = EnabledCategories.load() }
             .navigationTitle("記録")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -103,10 +105,18 @@ struct HistoryView: View {
         }
     }
 
+    /// 絞り込みの選択肢。非表示にしたカテゴリでも記録があれば辿れるようにする。
+    private var filterableCategories: [ActivityCategory] {
+        EnabledCategories.forDisplay(
+            minutes: StatsCalculator.minutesByCategory(sessions),
+            enabled: enabledCategories
+        )
+    }
+
     private var filterMenu: some View {
         Menu {
             Button("すべて") { filter = nil }
-            ForEach(ActivityCategory.allCases) { category in
+            ForEach(filterableCategories) { category in
                 Button {
                     filter = category
                 } label: {
