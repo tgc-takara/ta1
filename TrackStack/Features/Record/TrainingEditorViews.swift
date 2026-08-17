@@ -244,20 +244,27 @@ struct ExercisePickerView: View {
                         .listRowBackground(Color.clear)
                         .id("top")
 
-                    if let onSelectMenu, !menus.isEmpty {
+                    // メニューが未登録でも欄自体は出す(消えていると壊れて見えるため)
+                    if let onSelectMenu {
                         Section("メニューから") {
-                            ForEach(menus) { menu in
-                                Button {
-                                    onSelectMenu(menu)
-                                    dismiss()
-                                } label: {
-                                    HStack {
-                                        Label(menu.name, systemImage: "list.bullet.rectangle")
-                                            .foregroundStyle(.primary)
-                                        Spacer()
-                                        Text("\(menu.items.count)種目")
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
+                            if menus.isEmpty {
+                                Text("メニューが未登録です。設定 > トレーニングメニュー から作成できます")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                ForEach(menus) { menu in
+                                    Button {
+                                        onSelectMenu(menu)
+                                        dismiss()
+                                    } label: {
+                                        HStack {
+                                            Label(menu.name, systemImage: "list.bullet.rectangle")
+                                                .foregroundStyle(.primary)
+                                            Spacer()
+                                            Text("\(menu.items.count)種目")
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
                                     }
                                 }
                             }
