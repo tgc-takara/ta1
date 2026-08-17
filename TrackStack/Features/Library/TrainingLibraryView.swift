@@ -193,7 +193,7 @@ struct MenuFormView: View {
                     TextField("メニュー名(例: 胸の日)", text: $name)
                 }
 
-                ExerciseDraftSections(drafts: $drafts)
+                ExerciseDraftSections(drafts: $drafts, showsPreviousRecord: false)
 
                 Section {
                     Button {

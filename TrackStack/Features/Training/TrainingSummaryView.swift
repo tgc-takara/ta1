@@ -28,7 +28,7 @@ struct TrainingSummaryView: View {
             .flatMap { $0.exerciseLogs }
             .sorted { $0.order < $1.order }
             .map { log in
-                (name: log.exerciseName, bodyPart: log.bodyPart, detail: Self.detail(of: log))
+                (name: log.exerciseName, bodyPart: log.bodyPart, detail: log.summaryDetail)
             }
     }
 
@@ -162,24 +162,4 @@ struct TrainingSummaryView: View {
         }
     }
 
-    /// 「60kg×10, 60kg×8(片手)」/ 有酸素は「3.0km 20分」
-    static func detail(of log: ExerciseLog) -> String {
-        if log.bodyPart.isCardio {
-            var parts: [String] = []
-            if let distance = log.distanceKm, distance > 0 {
-                parts.append(String(format: "%.1fkm", distance))
-            }
-            if let minutes = log.durationMinutes, minutes > 0 {
-                parts.append("\(minutes)分")
-            }
-            return parts.joined(separator: " ")
-        }
-        return log.sets.map { set in
-            let weight = set.weightKg == set.weightKg.rounded()
-                ? String(Int(set.weightKg))
-                : String(set.weightKg)
-            return "\(weight)kg×\(set.reps)\(set.isSingleArm ? "(片手)" : "")"
-        }
-        .joined(separator: ", ")
-    }
 }

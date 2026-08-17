@@ -252,7 +252,7 @@ struct SessionFormView: View {
             }
         }
 
-        ExerciseDraftSections(drafts: $exerciseDrafts)
+        ExerciseDraftSections(drafts: $exerciseDrafts, editingSessionID: sessionToEdit?.id)
 
         Section {
             Button {

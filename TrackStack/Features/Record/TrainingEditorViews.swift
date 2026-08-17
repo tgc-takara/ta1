@@ -4,6 +4,14 @@ import SwiftData
 /// 種目ドラフト一覧の編集セクション群(記録フォームとメニュー編集で共用)
 struct ExerciseDraftSections: View {
     @Binding var drafts: [ExerciseDraft]
+    /// 「前回の記録」を出すための除外対象(編集中のセッション)
+    var editingSessionID: UUID?
+    /// メニューの雛形編集では前回の記録を出さない
+    var showsPreviousRecord: Bool = true
+
+    @Environment(\.modelContext) private var context
+    /// 種目名 → 前回の記録
+    @State private var previous: [String: PreviousRecord.Entry] = [:]
 
     var body: some View {
         ForEach($drafts) { $draft in
@@ -36,8 +44,23 @@ struct ExerciseDraftSections: View {
                     .buttonStyle(.borderless)
                     .font(.caption)
                 }
+            } footer: {
+                if let entry = previous[draft.name] {
+                    Text(PreviousRecord.label(entry))
+                }
             }
         }
+        .onAppear { reloadPreviousRecords() }
+        .onChange(of: drafts.map(\.name)) { _, _ in reloadPreviousRecords() }
+    }
+
+    private func reloadPreviousRecords() {
+        guard showsPreviousRecord else { return }
+        previous = PreviousRecord.latest(
+            for: drafts.map(\.name),
+            excluding: editingSessionID,
+            in: context
+        )
     }
 }
 
@@ -49,9 +72,14 @@ struct SetsEditorView: View {
     var body: some View {
         ForEach($sets) { $set in
             let index = sets.firstIndex(where: { $0.id == set.id }) ?? 0
-            SetRow(set: $set, index: index)
-                // セットが縦に並ぶため、行の上下余白を詰めて一覧性を上げる
-                .listRowInsets(EdgeInsets(top: 2, leading: 16, bottom: 2, trailing: 16))
+            SetRow(
+                set: $set,
+                index: index,
+                // セットが1つだけのときは削除させない(種目ごと消せばよい)
+                onDelete: sets.count > 1 ? { sets.removeAll { $0.id == set.id } } : nil
+            )
+            // セットが縦に並ぶため、行の上下余白を詰めて一覧性を上げる
+            .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 2, trailing: 12))
         }
         .onDelete { sets.remove(atOffsets: $0) }
 
@@ -72,6 +100,8 @@ struct SetsEditorView: View {
 private struct SetRow: View {
     @Binding var set: SetRecord
     let index: Int
+    /// nil のときは削除ボタンを出さない(最後の1セット)
+    let onDelete: (() -> Void)?
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -81,6 +111,7 @@ private struct SetRow: View {
                 HStack(spacing: 6) {
                     labelAndArmToggle
                     Spacer()
+                    deleteButton
                 }
                 HStack(spacing: 6) {
                     Spacer()
@@ -89,12 +120,26 @@ private struct SetRow: View {
                 }
             }
         } else {
-            HStack(spacing: 6) {
+            HStack(spacing: 4) {
                 labelAndArmToggle
-                Spacer()
+                Spacer(minLength: 0)
                 signToggle
                 valueFields
+                deleteButton
             }
+        }
+    }
+
+    @ViewBuilder
+    private var deleteButton: some View {
+        if let onDelete {
+            Button(role: .destructive, action: onDelete) {
+                Image(systemName: "minus.circle")
+                    .frame(width: 32, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.borderless)
+            .font(.subheadline)
         }
     }
 

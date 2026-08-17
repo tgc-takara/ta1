@@ -18,14 +18,35 @@ private struct NumberFieldBase: View {
             .keyboardType(keyboardType)
             .multilineTextAlignment(.trailing)
             .focused($isFocused)
+            // 数字そのものは小さいので、行の高さいっぱいをタップ領域にする
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+            .onTapGesture { isFocused = true }
             .onChange(of: isFocused) { _, focused in
                 guard focused else { return }
+                // 0 のまま打ち始めると "075" になってしまうため、
+                // フォーカス時に 0 は消して打ち直せるようにする
+                if text == "0" {
+                    text = ""
+                    return
+                }
                 let current = text
                 text = ""
                 // 同じ更新サイクルで戻すとキャレットが移動しないため次のループへ回す
                 DispatchQueue.main.async { text = current }
             }
     }
+}
+
+/// 先頭の余分な 0 を落とす("075" → "75")。
+/// 小数の "0.5" と符号の "-" は残す。
+func trimmedLeadingZeros(_ text: String) -> String {
+    let isNegative = text.hasPrefix("-")
+    var digits = isNegative ? String(text.dropFirst()) : text
+    while digits.count > 1, digits.hasPrefix("0"), !digits.hasPrefix("0.") {
+        digits.removeFirst()
+    }
+    return isNegative ? "-" + digits : digits
 }
 
 /// 重量(小数可)用。空欄は 0 として扱う。
@@ -39,8 +60,13 @@ struct WeightField: View {
         NumberFieldBase(text: $text, placeholder: placeholder, keyboardType: .numbersAndPunctuation)
             .onAppear { text = Self.format(value) }
             .onChange(of: text) { _, newText in
+                let normalized = trimmedLeadingZeros(newText)
+                if normalized != newText {
+                    text = normalized
+                    return
+                }
                 // 入力途中(空文字や "-" だけ)は 0 とみなす
-                value = Double(newText) ?? 0
+                value = Double(normalized) ?? 0
             }
             .onChange(of: value) { _, newValue in
                 // 符号反転など外部から書き換えられたときに表示を追従させる
@@ -67,7 +93,12 @@ struct RepsField: View {
         NumberFieldBase(text: $text, placeholder: placeholder, keyboardType: .numberPad)
             .onAppear { text = String(value) }
             .onChange(of: text) { _, newText in
-                value = Int(newText) ?? 0
+                let normalized = trimmedLeadingZeros(newText)
+                if normalized != newText {
+                    text = normalized
+                    return
+                }
+                value = Int(normalized) ?? 0
             }
             .onChange(of: value) { _, newValue in
                 if Int(text) != newValue {
