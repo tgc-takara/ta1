@@ -221,11 +221,8 @@ struct ExercisePickerView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \Exercise.createdAt) private var exercises: [Exercise]
-    @Query(sort: \WorkoutMenu.createdAt, order: .reverse) private var menus: [WorkoutMenu]
 
     let onSelect: (Exercise) -> Void
-    /// メニューを選んだときの処理。指定しなければメニュー欄を出さない。
-    var onSelectMenu: ((WorkoutMenu) -> Void)?
 
     @State private var newName = ""
     @State private var newBodyPart: BodyPart = .chest
@@ -244,46 +241,61 @@ struct ExercisePickerView: View {
                         .listRowBackground(Color.clear)
                         .id("top")
 
-                    // メニューが未登録でも欄自体は出す(消えていると壊れて見えるため)
-                    if let onSelectMenu {
-                        Section("メニューから") {
-                            if menus.isEmpty {
-                                Text("メニューが未登録です。設定 > トレーニングメニュー から作成できます")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            } else {
-                                ForEach(menus) { menu in
-                                    Button {
-                                        onSelectMenu(menu)
-                                        dismiss()
-                                    } label: {
-                                        HStack {
-                                            Label(menu.name, systemImage: "list.bullet.rectangle")
-                                                .foregroundStyle(.primary)
-                                            Spacer()
-                                            Text("\(menu.items.count)種目")
-                                                .font(.caption)
-                                                .foregroundStyle(.secondary)
-                                        }
+                    Section("部位へジャンプ") {
+                        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 10) {
+                            ForEach(BodyPart.allCases) { part in
+                                Button {
+                                    withAnimation {
+                                        proxy.scrollTo(part, anchor: .top)
                                     }
+                                } label: {
+                                    VStack(spacing: 4) {
+                                        Image(systemName: part.symbolName)
+                                            .font(.title3)
+                                            .frame(height: 24)
+                                        Text(part.label)
+                                            .font(.caption2)
+                                            .lineLimit(2)
+                                            .minimumScaleFactor(0.6)
+                                            .multilineTextAlignment(.center)
+                                    }
+                                    .frame(maxWidth: .infinity, minHeight: 64)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .fill(part.color.opacity(0.15))
+                                    )
+                                    .foregroundStyle(part.color)
                                 }
+                                .buttonStyle(.borderless)
                             }
                         }
+                        .padding(.vertical, 4)
+                        .listRowBackground(Color.clear)
                     }
 
                     ForEach(BodyPart.allCases) { part in
                         let items = exercises.filter { $0.bodyPart == part }
                         if !items.isEmpty {
-                            Section(part.label) {
+                            Section {
                                 ForEach(items) { exercise in
                                     Button {
                                         onSelect(exercise)
                                         dismiss()
                                     } label: {
-                                        Text(exercise.name)
-                                            .foregroundStyle(.primary)
+                                        HStack {
+                                            Image(systemName: part.symbolName)
+                                                .foregroundStyle(part.color)
+                                                .frame(width: 28)
+                                            Text(exercise.name)
+                                                .foregroundStyle(.primary)
+                                        }
                                     }
                                 }
+                            } header: {
+                                // ジャンプ先の目印。部位ボタンからここへスクロールする
+                                Text(part.label)
+                                    .foregroundStyle(part.color)
+                                    .id(part)
                             }
                         }
                     }

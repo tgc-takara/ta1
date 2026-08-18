@@ -116,16 +116,11 @@ struct SessionFormView: View {
                 }
             }
             .sheet(isPresented: $showingExercisePicker) {
-                ExercisePickerView(
-                    onSelect: { exercise in
-                        exerciseDrafts.append(
-                            ExerciseDraft(name: exercise.name, bodyPart: exercise.bodyPart)
-                        )
-                    },
-                    onSelectMenu: { menu in
-                        apply(menu)
-                    }
-                )
+                ExercisePickerView { exercise in
+                    exerciseDrafts.append(
+                        ExerciseDraft(name: exercise.name, bodyPart: exercise.bodyPart)
+                    )
+                }
             }
             .confirmationDialog(
                 "トレーニングを終了しますか?",
