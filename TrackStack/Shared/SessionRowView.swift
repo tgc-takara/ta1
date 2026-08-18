@@ -69,7 +69,7 @@ struct SessionRowView: View {
         case .article:
             let titles = session.articleClips
                 .sorted { $0.order < $1.order }
-                .map(\.title)
+                .map(\.displayTitle)
             if !titles.isEmpty {
                 return titles.joined(separator: "・")
             }

@@ -281,16 +281,14 @@ struct SessionFormView: View {
         Section {
             ForEach($clipDrafts) { $draft in
                 VStack(alignment: .leading, spacing: 6) {
-                    TextField("記事の見出し", text: $draft.title)
+                    TextField("URL", text: $draft.urlString)
                         .font(.body)
-                    TextField("URL(任意)", text: $draft.urlString)
-                        .font(.caption)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .keyboardType(.URL)
-                    TextField("メモ(任意)", text: $draft.memo, axis: .vertical)
-                        .font(.caption)
-                        .lineLimit(1...3)
+                    TextField("メモ", text: $draft.memo, axis: .vertical)
+                        .font(.subheadline)
+                        .lineLimit(1...4)
                 }
                 .padding(.vertical, 2)
             }
@@ -306,7 +304,7 @@ struct SessionFormView: View {
         } footer: {
             Text(clipDrafts.isEmpty
                  ? "読んだ記事をクリップできます(記事なしで時間だけの記録も可)"
-                 : "見出しが空の記事は保存されません。左スワイプで削除できます")
+                 : "URL・メモとも空の記事は保存されません。左スワイプで削除できます")
         }
     }
 
@@ -460,8 +458,8 @@ struct SessionFormView: View {
                 context.insert(log)
             }
         case .article:
-            // 見出しが空のクリップは入力途中とみなして保存しない
-            for (index, draft) in clipDrafts.filter({ !$0.trimmedTitle.isEmpty }).enumerated() {
+            // URL もメモも空のクリップは入力途中とみなして保存しない
+            for (index, draft) in clipDrafts.filter({ $0.hasContent }).enumerated() {
                 let clip = draft.makeClip(order: index)
                 clip.session = session
                 context.insert(clip)

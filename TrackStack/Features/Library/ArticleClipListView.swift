@@ -62,9 +62,10 @@ struct ArticleClipRowView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             if let url = clip.url {
+                // URL があるときはリンク行に見出し(なければURL)を出し、メモは下に置く
                 Link(destination: url) {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        Text(clip.title)
+                        Text(clip.title.isEmpty ? (clip.urlString ?? url.absoluteString) : clip.title)
                             .font(.body)
                             .multilineTextAlignment(.leading)
                         Image(systemName: "arrow.up.right.square")
@@ -72,15 +73,22 @@ struct ArticleClipRowView: View {
                     }
                 }
                 .foregroundStyle(ActivityCategory.article.color)
-            } else {
-                Text(clip.title)
-                    .font(.body)
-            }
 
-            if let memo = clip.memo, !memo.isEmpty {
-                Text(memo)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                if let memo = clip.memo, !memo.isEmpty {
+                    Text(memo)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                // URL がないときはメモ自体が本文になるので、二重に出さない
+                Text(clip.displayTitle)
+                    .font(.body)
+
+                if !clip.title.isEmpty, let memo = clip.memo, !memo.isEmpty {
+                    Text(memo)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
         .padding(.vertical, 2)

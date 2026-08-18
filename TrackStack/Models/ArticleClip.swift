@@ -14,6 +14,16 @@ final class ArticleClip {
     var order: Int
     var session: Session?
 
+    /// 一覧に出す見出し。見出し未入力のときはメモ→URL の順で代用する
+    /// (入力欄は URL とメモだけなので、たいていメモか URL が表示名になる)
+    var displayTitle: String {
+        if !title.isEmpty { return title }
+        if let memo, !memo.isEmpty {
+            return memo.split(separator: "\n").first.map(String.init) ?? memo
+        }
+        return urlString ?? "(無題)"
+    }
+
     /// 開ける URL があれば返す。スキームのない入力は https:// を補う。
     var url: URL? {
         guard let urlString, !urlString.isEmpty else { return nil }

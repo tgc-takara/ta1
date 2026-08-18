@@ -235,12 +235,6 @@ struct ExercisePickerView: View {
         NavigationStack {
             ScrollViewReader { proxy in
                 List {
-                    Color.clear
-                        .frame(height: 0)
-                        .listRowInsets(EdgeInsets())
-                        .listRowBackground(Color.clear)
-                        .id("top")
-
                     Section("部位へジャンプ") {
                         LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 10) {
                             ForEach(BodyPart.allCases) { part in
@@ -271,6 +265,7 @@ struct ExercisePickerView: View {
                         }
                         .padding(.vertical, 4)
                         .listRowBackground(Color.clear)
+                        .id("top")
                     }
 
                     ForEach(BodyPart.allCases) { part in

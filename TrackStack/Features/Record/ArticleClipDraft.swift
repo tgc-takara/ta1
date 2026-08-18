@@ -24,6 +24,14 @@ struct ArticleClipDraft: Identifiable, Hashable {
         title.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    /// URL かメモのどちらかが入っていれば保存対象にする
+    /// (見出しは入力欄から外したので、空でも捨てない)
+    var hasContent: Bool {
+        !trimmedTitle.isEmpty
+            || !urlString.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || !memo.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     func makeClip(order: Int) -> ArticleClip {
         ArticleClip(
             title: trimmedTitle,
