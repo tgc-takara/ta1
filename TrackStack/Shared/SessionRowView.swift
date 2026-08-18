@@ -10,8 +10,9 @@ struct SessionRowView: View {
                 .fill(session.category.color)
                 .frame(width: 3)
 
+            // アイコンもカテゴリ色にして、左の色帯と合わせてひと目で種別が分かるようにする
             Image(systemName: session.category.symbolName)
-                .foregroundStyle(Theme.inkSecondary)
+                .foregroundStyle(session.category.color)
                 .frame(width: 28)
 
             VStack(alignment: .leading, spacing: 2) {
