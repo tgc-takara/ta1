@@ -87,11 +87,18 @@ struct TrainingLibraryView: View {
                     if !items.isEmpty {
                         Section {
                             ForEach(items) { exercise in
-                                HStack {
-                                    Image(systemName: part.symbolName)
-                                        .foregroundStyle(part.color)
-                                        .frame(width: 28)
-                                    Text(exercise.name)
+                                NavigationLink {
+                                    ExerciseHistoryView(
+                                        exerciseName: exercise.name,
+                                        bodyPart: exercise.bodyPart
+                                    )
+                                } label: {
+                                    HStack {
+                                        Image(systemName: part.symbolName)
+                                            .foregroundStyle(part.color)
+                                            .frame(width: 28)
+                                        Text(exercise.name)
+                                    }
                                 }
                                 .listRowBackground(Theme.surface)
                             }
