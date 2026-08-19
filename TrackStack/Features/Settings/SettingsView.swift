@@ -9,6 +9,9 @@ struct SettingsView: View {
                     NavigationLink("表示するカテゴリ") {
                         CategoryVisibilitySettingsView()
                     }
+                    NavigationLink("週の目標時間") {
+                        WeeklyTargetSettingsView()
+                    }
                 }
                 .listRowBackground(Theme.surface)
                 Section("マスタ") {
@@ -102,6 +105,57 @@ struct CategoryVisibilitySettingsView: View {
         }
         enabled = next
         EnabledCategories.save(ActivityCategory.allCases.filter(next.contains))
+    }
+}
+
+/// カテゴリ別の週の目標時間(分)の設定。ここで登録した値がホームの今週カードの進捗表示になる。
+struct WeeklyTargetSettingsView: View {
+    @State private var targets: [ActivityCategory: Int] = WeeklyTargets.load()
+
+    var body: some View {
+        List {
+            Section {
+                ForEach(ActivityCategory.allCases) { category in
+                    Stepper(
+                        value: Binding(
+                            get: { targets[category] ?? 0 },
+                            set: { updateTarget(for: category, to: $0) }
+                        ),
+                        in: 0...3000,
+                        step: 30
+                    ) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Label(category.label, systemImage: category.symbolName)
+                                .foregroundStyle(Theme.ink)
+                            let minutes = targets[category] ?? 0
+                            Text(minutes > 0 ? Formatters.duration(minutes: minutes) : "未設定")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            } footer: {
+                Text("目標を設定したカテゴリだけ、ホームの今週カードに進捗が表示されます。0にすると目標なしに戻ります")
+            }
+            .listRowBackground(Theme.surface)
+        }
+        .scrollContentBackground(.hidden)
+        .background(Theme.paper)
+        .navigationTitle("週の目標時間")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func updateTarget(for category: ActivityCategory, to minutes: Int) {
+        // @State は書き換えた直後に読み返すと古い値が返ることがあるため、
+        // 必ずローカルで新しい辞書を作ってから反映・保存する
+        var next = targets
+        if minutes > 0 {
+            next[category] = minutes
+        } else {
+            next.removeValue(forKey: category)
+        }
+        targets = next
+        WeeklyTargets.save(next)
     }
 }
 

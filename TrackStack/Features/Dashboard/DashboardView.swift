@@ -9,6 +9,8 @@ struct DashboardView: View {
     @State private var pendingTimerResult: PendingTimerResult?
     /// 設定で選んだ表示カテゴリ。設定画面から戻ったときに読み直す。
     @State private var enabledCategories: [ActivityCategory] = EnabledCategories.load()
+    /// カテゴリ別の週の目標時間(分)。設定画面から戻ったときに読み直す。
+    @State private var weeklyTargets: [ActivityCategory: Int] = WeeklyTargets.load()
     /// トレーニングは計測画面ではなく記録フォームを開く
     @State private var showingTrainingSheet = false
     @State private var trainingStartedAt = Date()
@@ -70,7 +72,10 @@ struct DashboardView: View {
                 }
                 .padding()
             }
-            .onAppear { enabledCategories = EnabledCategories.load() }
+            .onAppear {
+                enabledCategories = EnabledCategories.load()
+                weeklyTargets = WeeklyTargets.load()
+            }
             .background(Theme.paper)
             .navigationTitle("ひとつみ")
             .toolbar {
@@ -196,10 +201,45 @@ struct DashboardView: View {
                 .monospacedDigit()
                 .foregroundStyle(Theme.ink)
             categoryBreakdown(StatsCalculator.minutesByCategory(weekSessions))
+            weeklyTargetProgress
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
         .cardStyle()
+    }
+
+    /// 週の目標時間を設定したカテゴリだけ、実績との進捗を表示する。1件もなければ何も出さない。
+    @ViewBuilder
+    private var weeklyTargetProgress: some View {
+        let targetedCategories = ActivityCategory.allCases.filter { (weeklyTargets[$0] ?? 0) > 0 }
+        if !targetedCategories.isEmpty {
+            let minutes = StatsCalculator.minutesByCategory(weekSessions)
+            Divider()
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(targetedCategories) { category in
+                    let actual = minutes[category] ?? 0
+                    let target = weeklyTargets[category] ?? 0
+                    let achieved = actual >= target
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Image(systemName: category.symbolName)
+                                .foregroundStyle(category.color)
+                                .font(.caption)
+                            Text(category.label)
+                                .font(.caption)
+                                .foregroundStyle(Theme.inkSecondary)
+                            Spacer()
+                            Text("\(Formatters.duration(minutes: actual)) / \(Formatters.duration(minutes: target))")
+                                .font(.caption.monospacedDigit())
+                                .fontWeight(achieved ? .bold : .regular)
+                                .foregroundStyle(achieved ? category.color : Theme.inkSecondary)
+                        }
+                        ProgressView(value: min(Double(actual), Double(target)), total: Double(target))
+                            .tint(category.color)
+                    }
+                }
+            }
+        }
     }
 
     /// カテゴリ別の内訳。5カテゴリあるため1行に収めず3列グリッドで折り返す。
