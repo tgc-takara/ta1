@@ -16,6 +16,8 @@ enum Theme {
     static let rule = dynamicColor(light: 0xE2DCCC, dark: 0x302E25)
     /// 藍。「今日」を示すときにだけ使う(読書カテゴリの青より濃く彩度を上げて区別する)
     static let ai = dynamicColor(light: 0x1D4E89, dark: 0x8FB6F5)
+    /// 朱。片手など「通常と違う状態」の強調に使う
+    static let shu = dynamicColor(light: 0xA93B2B, dark: 0xD06450)
 
     /// ライト/ダークそれぞれの16進カラーコードからダイナミックな Color を作る
     static func dynamicColor(light: UInt32, dark: UInt32) -> Color {

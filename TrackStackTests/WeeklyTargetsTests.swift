@@ -34,12 +34,12 @@ final class WeeklyTargetsTests: XCTestCase {
         XCTAssertEqual(WeeklyTargets.load(), [:])
     }
 
-    /// 旧カテゴリ("newspaper" / "podcast")や出鱈目なキーが混ざっていても無視して読める
+    /// 出鱈目なキーが混ざっていても無視して読める
     func testUnknownKeysAreIgnored() {
         UserDefaults.standard.set(
-            ["reading": 300, "newspaper": 60, "podcast": 90, "bogus": 45],
+            ["reading": 300, "bogus": 45],
             forKey: WeeklyTargets.userDefaultsKey
         )
-        XCTAssertEqual(WeeklyTargets.load(), [.reading: 300, .article: 60, .media: 90])
+        XCTAssertEqual(WeeklyTargets.load(), [.reading: 300])
     }
 }

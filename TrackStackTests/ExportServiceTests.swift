@@ -17,7 +17,6 @@ final class ExportServiceTests: XCTestCase {
         let schema = Schema([
             Session.self, Book.self, BookGenre.self, Subject.self,
             Exercise.self, ExerciseLog.self, WorkoutMenu.self,
-            ArticleClip.self, PodcastShow.self,
         ])
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
         container = try ModelContainer(for: schema, configurations: [configuration])
@@ -51,7 +50,7 @@ final class ExportServiceTests: XCTestCase {
         let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
 
         XCTAssertEqual(json["app"] as? String, "hitotsumi")
-        XCTAssertEqual(json["schemaVersion"] as? Int, 3)
+        XCTAssertEqual(json["schemaVersion"] as? Int, 4)
         let sessions = try XCTUnwrap(json["sessions"] as? [[String: Any]])
         XCTAssertEqual(sessions.count, 2)
     }
@@ -118,60 +117,6 @@ final class ExportServiceTests: XCTestCase {
         XCTAssertEqual(bookJSON["title"] as? String, "テスト本")
         XCTAssertEqual(sessionJSON["durationMinutes"] as? Int, 45)
         XCTAssertEqual(sessionJSON["note"] as? String, "第1章まで")
-    }
-
-    func testJSONArticleSessionIncludesClips() throws {
-        let session = Session(category: .article, startedAt: Date(), durationMinutes: 20)
-        context.insert(session)
-        let first = ArticleClip(title: "日銀、利上げ判断へ", urlString: "https://example.com/a", order: 0)
-        first.session = session
-        let second = ArticleClip(title: "半導体投資が加速", memo: "後で読み返す", order: 1)
-        second.session = session
-        // 見出し欄は廃止済み。空の見出しは title キーごと出さない
-        let untitled = ArticleClip(title: "", urlString: "https://example.com/c", memo: "あとで読む", order: 2)
-        untitled.session = session
-        context.insert(first)
-        context.insert(second)
-        context.insert(untitled)
-
-        let data = try ExportService.makeJSON(
-            sessions: [session], books: [], subjects: [], exercises: [],
-            exportedAt: Date()
-        )
-        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
-        let sessions = try XCTUnwrap(json["sessions"] as? [[String: Any]])
-        let articles = try XCTUnwrap(sessions.first?["articles"] as? [[String: Any]])
-
-        XCTAssertEqual(articles.count, 3)
-        XCTAssertEqual(articles.first?["title"] as? String, "日銀、利上げ判断へ")
-        XCTAssertEqual(articles.first?["url"] as? String, "https://example.com/a")
-        XCTAssertEqual(articles[1]["memo"] as? String, "後で読み返す")
-        XCTAssertNil(articles.last?["title"])
-        XCTAssertEqual(articles.last?["url"] as? String, "https://example.com/c")
-        XCTAssertEqual(articles.last?["memo"] as? String, "あとで読む")
-    }
-
-    func testJSONMediaSessionIncludesSeriesAndTitle() throws {
-        let show = PodcastShow(name: "ゆる言語学ラジオ")
-        context.insert(show)
-        let session = Session(category: .media, startedAt: Date(), durationMinutes: 55)
-        session.podcastShow = show
-        session.episodeTitle = "第100回"
-        context.insert(session)
-
-        let data = try ExportService.makeJSON(
-            sessions: [session], books: [], subjects: [], exercises: [],
-            mediaSeries: [show],
-            exportedAt: Date()
-        )
-        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
-        let sessions = try XCTUnwrap(json["sessions"] as? [[String: Any]])
-        let media = try XCTUnwrap(sessions.first?["media"] as? [String: Any])
-
-        XCTAssertEqual(media["series"] as? String, "ゆる言語学ラジオ")
-        XCTAssertEqual(media["title"] as? String, "第100回")
-        let shows = try XCTUnwrap(json["mediaSeries"] as? [[String: Any]])
-        XCTAssertEqual(shows.first?["name"] as? String, "ゆる言語学ラジオ")
     }
 
     // MARK: - CSV
@@ -269,53 +214,6 @@ final class ExportServiceTests: XCTestCase {
         XCTAssertFalse(day2File.content.contains("## 💪 トレーニング"))
     }
 
-    func testMarkdownArticleClipsBecomeLinks() throws {
-        let day = jstCalendar.date(from: DateComponents(year: 2026, month: 8, day: 1, hour: 7))!
-        let session = Session(category: .article, startedAt: day, durationMinutes: 20)
-        context.insert(session)
-        let linked = ArticleClip(title: "日銀、利上げ判断へ", urlString: "https://example.com/a", order: 0)
-        linked.session = session
-        let plain = ArticleClip(title: "半導体投資が加速", order: 1)
-        plain.session = session
-        // 見出しが空 + URL あり: 表示名は URL 文字列。メモは後ろに付ける
-        let untitledLink = ArticleClip(title: "", urlString: "https://example.com/b", memo: "あとで読む", order: 2)
-        untitledLink.session = session
-        // 見出しが空 + メモだけ: メモ自体が表示名になるので二重に出さない
-        let memoOnly = ArticleClip(title: "", memo: "気になった話", order: 3)
-        memoOnly.session = session
-        context.insert(linked)
-        context.insert(plain)
-        context.insert(untitledLink)
-        context.insert(memoOnly)
-
-        let files = ExportService.makeMarkdownFiles(sessions: [session], calendar: jstCalendar)
-        let file = try XCTUnwrap(files.first)
-
-        XCTAssertTrue(file.content.contains("## 📰 記事 20分"))
-        XCTAssertTrue(file.content.contains("- [日銀、利上げ判断へ](https://example.com/a)"))
-        XCTAssertTrue(file.content.contains("- 半導体投資が加速"))
-        XCTAssertTrue(file.content.contains("- [https://example.com/b](https://example.com/b) — あとで読む"))
-        XCTAssertTrue(file.content.contains("- 気になった話"))
-        XCTAssertFalse(file.content.contains("- 気になった話 — 気になった話"))
-    }
-
-    /// CSV の detail 列も見出しではなく表示名(メモ→URL の順で代用)を出す
-    func testCSVArticleDetailUsesDisplayTitle() {
-        let session = Session(category: .article, startedAt: Date(), durationMinutes: 20)
-        context.insert(session)
-        let untitledLink = ArticleClip(title: "", urlString: "https://example.com/b", order: 0)
-        untitledLink.session = session
-        let memoOnly = ArticleClip(title: "", memo: "気になった話", order: 1)
-        memoOnly.session = session
-        context.insert(untitledLink)
-        context.insert(memoOnly)
-
-        let csv = ExportService.makeCSV(sessions: [session])
-
-        XCTAssertTrue(csv.contains("https://example.com/b・気になった話"))
-    }
-
-    /// トレーニングのメモは、種目行の前に引用行として出す
     func testMarkdownTrainingIncludesSessionNote() throws {
         let day = jstCalendar.date(from: DateComponents(year: 2026, month: 8, day: 1, hour: 19))!
         let session = Session(category: .training, startedAt: day, durationMinutes: 60, note: "肩が重かった")
@@ -334,22 +232,6 @@ final class ExportServiceTests: XCTestCase {
         let noteIndex = try XCTUnwrap(file.content.range(of: "> 肩が重かった"))
         let logIndex = try XCTUnwrap(file.content.range(of: "- ベンチプレス"))
         XCTAssertTrue(noteIndex.lowerBound < logIndex.lowerBound)
-    }
-
-    func testMarkdownMediaLineIncludesSeriesAndTitle() throws {
-        let day = jstCalendar.date(from: DateComponents(year: 2026, month: 8, day: 1, hour: 8))!
-        let show = PodcastShow(name: "ゆる言語学ラジオ")
-        context.insert(show)
-        let session = Session(category: .media, startedAt: day, durationMinutes: 55)
-        session.podcastShow = show
-        session.episodeTitle = "第100回"
-        context.insert(session)
-
-        let files = ExportService.makeMarkdownFiles(sessions: [session], calendar: jstCalendar)
-        let file = try XCTUnwrap(files.first)
-
-        XCTAssertTrue(file.content.contains("## 🎧 動画・音声 55分"))
-        XCTAssertTrue(file.content.contains("- ゆる言語学ラジオ 第100回"))
     }
 
     func testMarkdownOmitsNoteSuffixWhenNoteIsNil() throws {

@@ -17,6 +17,8 @@ struct DashboardView: View {
     @State private var showingTrainingSheet = false
     @State private var trainingStartedAt = Date()
     @State private var trainingSummaryDate: TrainingSummaryDate?
+    /// 「今日の記録」の行タップで開く編集シート
+    @State private var editingSession: Session?
 
     /// sheet(item:) で扱うための日付ラッパー
     private struct TrainingSummaryDate: Identifiable {
@@ -121,6 +123,9 @@ struct DashboardView: View {
             }
             .sheet(item: $trainingSummaryDate) { summary in
                 TrainingSummaryView(date: summary.date)
+            }
+            .sheet(item: $editingSession) { session in
+                SessionFormView(sessionToEdit: session)
             }
             .fullScreenCover(isPresented: $showingTimerSheet) {
                 TimerView(activeTimer: activeTimer) { category, startedAt, durationMinutes in
@@ -276,8 +281,14 @@ struct DashboardView: View {
             Text("今日の記録")
                 .font(.headline)
             ForEach(todaySessions) { session in
-                SessionRowView(session: session)
-                    .padding(.vertical, 4)
+                Button {
+                    editingSession = session
+                } label: {
+                    SessionRowView(session: session)
+                        .padding(.vertical, 4)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

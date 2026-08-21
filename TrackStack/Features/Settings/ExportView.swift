@@ -8,7 +8,6 @@ struct ExportView: View {
     @Query private var books: [Book]
     @Query private var subjects: [Subject]
     @Query private var exercises: [Exercise]
-    @Query private var mediaSeries: [PodcastShow]
 
     @State private var isExporting = false
     @State private var shareURL: URL?
@@ -95,7 +94,6 @@ struct ExportView: View {
         do {
             let data = try ExportService.makeJSON(
                 sessions: sessions, books: books, subjects: subjects, exercises: exercises,
-                mediaSeries: mediaSeries,
                 exportedAt: Date()
             )
             let url = FileManager.default.temporaryDirectory.appendingPathComponent(fileName(ext: "json"))

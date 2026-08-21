@@ -10,7 +10,6 @@ final class PreviousRecordTests: XCTestCase {
         let schema = Schema([
             Session.self, Book.self, BookGenre.self, Subject.self,
             Exercise.self, ExerciseLog.self, WorkoutMenu.self,
-            ArticleClip.self, PodcastShow.self,
         ])
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
         container = try ModelContainer(for: schema, configurations: [configuration])

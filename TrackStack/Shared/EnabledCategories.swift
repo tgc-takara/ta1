@@ -11,11 +11,8 @@ enum EnabledCategories {
         guard let raws = UserDefaults.standard.stringArray(forKey: userDefaultsKey) else {
             return ActivityCategory.allCases
         }
-        // 統合前("newspaper" / "podcast")で保存された設定も引き継ぐ。
-        // 読み飛ばすと、ユーザーがオフにしていないカテゴリが消えてしまうため。
-        let enabled = Set(raws.compactMap { raw in
-            ActivityCategory(rawValue: raw) ?? ActivityCategory.legacyRawValues[raw]
-        })
+        // 廃止したカテゴリ名など、いまはないキーは読み捨てる
+        let enabled = Set(raws.compactMap(ActivityCategory.init(rawValue:)))
         // 全部オフになってしまった状態は選択不能になるため、既定に戻す
         guard !enabled.isEmpty else { return ActivityCategory.allCases }
         return ActivityCategory.allCases.filter(enabled.contains)

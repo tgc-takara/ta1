@@ -157,7 +157,7 @@ private struct SetRow: View {
             set.isSingleArm.toggle()
         }
         .buttonStyle(.bordered)
-        .tint(set.isSingleArm ? ActivityCategory.media.color : Theme.ai)
+        .tint(set.isSingleArm ? Theme.shu : Theme.ai)
         .font(.caption)
     }
 

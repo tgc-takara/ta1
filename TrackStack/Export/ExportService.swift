@@ -15,8 +15,6 @@ enum ExportService {
         var books: [ExportBook]
         var subjects: [ExportSubject]
         var exercises: [ExportExercise]
-        /// 動画・音声のシリーズ(番組 / 動画講座 / セミナー)
-        var mediaSeries: [ExportMediaSeries]
     }
 
     struct ExportSession: Encodable {
@@ -29,27 +27,6 @@ enum ExportService {
         var subject: ExportSessionSubject?
         var menu: String?
         var exercises: [ExportSessionExercise]?
-        /// 記事: その日クリップした記事(新聞・Web記事・レポート)
-        var articles: [ExportArticleClip]?
-        /// 動画・音声: シリーズ名とタイトル
-        var media: ExportSessionMedia?
-    }
-
-    struct ExportArticleClip: Encodable {
-        /// 見出し。入力欄を廃止したので空のことが多く、その場合は出力しない
-        var title: String?
-        var url: String?
-        var memo: String?
-    }
-
-    struct ExportSessionMedia: Encodable {
-        var series: String?
-        var title: String?
-    }
-
-    struct ExportMediaSeries: Encodable {
-        var name: String
-        var memo: String?
     }
 
     struct ExportSessionBook: Encodable {
@@ -124,18 +101,16 @@ enum ExportService {
         books: [Book],
         subjects: [Subject],
         exercises: [Exercise],
-        mediaSeries: [PodcastShow] = [],
         exportedAt: Date
     ) throws -> Data {
         let payload = ExportPayload(
             app: "hitotsumi",
-            schemaVersion: 3,
+            schemaVersion: 4,
             exportedAt: exportedAt,
             sessions: sessions.map(exportSession),
             books: books.map(exportBook),
             subjects: subjects.map(exportSubject),
-            exercises: exercises.map(exportExercise),
-            mediaSeries: mediaSeries.map { ExportMediaSeries(name: $0.name, memo: $0.memo) }
+            exercises: exercises.map(exportExercise)
         )
 
         let encoder = JSONEncoder()
@@ -152,8 +127,6 @@ enum ExportService {
         var subject: ExportSessionSubject?
         var menu: String?
         var exercises: [ExportSessionExercise]?
-        var articles: [ExportArticleClip]?
-        var media: ExportSessionMedia?
 
         switch session.category {
         case .reading:
@@ -178,16 +151,6 @@ enum ExportService {
             exercises = session.exerciseLogs
                 .sorted { $0.order < $1.order }
                 .map(exportSessionExercise)
-        case .article:
-            let clips = session.articleClips.sorted { $0.order < $1.order }
-            articles = clips.isEmpty ? nil : clips.map {
-                ExportArticleClip(title: $0.title.nilIfEmpty, url: $0.urlString, memo: $0.memo)
-            }
-        case .media:
-            media = ExportSessionMedia(
-                series: session.podcastShow?.name ?? session.mediaSeriesName,
-                title: session.episodeTitle
-            )
         }
 
         return ExportSession(
@@ -199,9 +162,7 @@ enum ExportService {
             book: book,
             subject: subject,
             menu: menu,
-            exercises: exercises,
-            articles: articles,
-            media: media
+            exercises: exercises
         )
     }
 
@@ -275,16 +236,6 @@ enum ExportService {
                     .sorted { $0.order < $1.order }
                     .map(\.exerciseName)
                     .joined(separator: "・")
-            case .article:
-                title = "記事"
-                // 見出し欄は廃止したので、表示名(メモ→URL の順で代用)を使う
-                detail = session.articleClips
-                    .sorted { $0.order < $1.order }
-                    .map(\.displayTitle)
-                    .joined(separator: "・")
-            case .media:
-                title = session.podcastShow?.name ?? session.mediaSeriesName ?? ""
-                detail = session.episodeTitle ?? ""
             }
 
             let note = session.note ?? ""
@@ -339,16 +290,11 @@ enum ExportService {
         let readingSessions = sessions.filter { $0.category == .reading }
         let trainingSessions = sessions.filter { $0.category == .training }
         let studySessions = sessions.filter { $0.category == .study }
-        let articleSessions = sessions.filter { $0.category == .article }
-        let mediaSessions = sessions.filter { $0.category == .media }
 
         let readingMinutes = readingSessions.reduce(0) { $0 + $1.durationMinutes }
         let trainingMinutes = trainingSessions.reduce(0) { $0 + $1.durationMinutes }
         let studyMinutes = studySessions.reduce(0) { $0 + $1.durationMinutes }
-        let articleMinutes = articleSessions.reduce(0) { $0 + $1.durationMinutes }
-        let mediaMinutes = mediaSessions.reduce(0) { $0 + $1.durationMinutes }
         let totalMinutes = readingMinutes + trainingMinutes + studyMinutes
-            + articleMinutes + mediaMinutes
 
         let frontmatter = [
             "---",
@@ -357,8 +303,6 @@ enum ExportService {
             "reading_minutes: \(readingMinutes)",
             "training_minutes: \(trainingMinutes)",
             "study_minutes: \(studyMinutes)",
-            "article_minutes: \(articleMinutes)",
-            "media_minutes: \(mediaMinutes)",
             "---",
         ].joined(separator: "\n")
 
@@ -397,36 +341,6 @@ enum ExportService {
             for session in studySessions {
                 let name = session.subject?.name ?? session.subjectName ?? ""
                 lines.append("- \(name)\(noteSuffix(session.note))")
-            }
-            sections.append(lines.joined(separator: "\n"))
-        }
-
-        if !articleSessions.isEmpty {
-            var lines = ["## 📰 記事 \(articleMinutes)分"]
-            let clips = articleSessions
-                .flatMap { $0.articleClips }
-                .sorted { $0.order < $1.order }
-            for clip in clips {
-                if let urlString = clip.urlString {
-                    // URL があれば Obsidian からそのまま開けるようリンク記法にする
-                    // (見出しが空なら URL 文字列をそのまま表示名にする)
-                    let label = clip.title.isEmpty ? urlString : clip.title
-                    lines.append("- [\(label)](\(urlString))\(noteSuffix(clip.memo))")
-                } else {
-                    // URL がないときは表示名がメモ自身になりうるので、メモを二重に出さない
-                    let suffix = clip.title.isEmpty ? "" : noteSuffix(clip.memo)
-                    lines.append("- \(clip.displayTitle)\(suffix)")
-                }
-            }
-            sections.append(lines.joined(separator: "\n"))
-        }
-
-        if !mediaSessions.isEmpty {
-            var lines = ["## 🎧 動画・音声 \(mediaMinutes)分"]
-            for session in mediaSessions {
-                let name = session.podcastShow?.name ?? session.mediaSeriesName ?? ""
-                let episode = session.episodeTitle.map { " \($0)" } ?? ""
-                lines.append("- \(name)\(episode)\(noteSuffix(session.note))")
             }
             sections.append(lines.joined(separator: "\n"))
         }

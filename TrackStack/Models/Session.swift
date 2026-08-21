@@ -29,26 +29,9 @@ final class Session {
     /// 使用したメニュー名(参照ではなくスナップショット。メニュー削除後も記録は残る)
     var menuName: String?
 
-    // MARK: 新聞
-    /// その日読んだ記事のクリップ
-    @Relationship(deleteRule: .cascade, inverse: \ArticleClip.session)
-    var articleClips: [ArticleClip]
-
-    // MARK: 動画・音声
-    /// シリーズ(番組名 / 動画講座名 / セミナー名)
-    var podcastShow: PodcastShow?
-    /// シリーズ名のスナップショット(シリーズを削除しても記録が「どれだったか」分かるように)
-    var mediaSeriesName: String?
-    /// 回・エピソードのタイトル(任意)
-    var episodeTitle: String?
-
-    /// 旧カテゴリ("newspaper" / "podcast")で保存された記録も、統合後のカテゴリとして読める
+    /// 未知の rawValue は既定(勉強)に倒す。カテゴリ不明で記録が消えてしまわないように。
     var category: ActivityCategory {
-        get {
-            ActivityCategory(rawValue: categoryRaw)
-                ?? ActivityCategory.legacyRawValues[categoryRaw]
-                ?? .study
-        }
+        get { ActivityCategory(rawValue: categoryRaw) ?? .study }
         set { categoryRaw = newValue.rawValue }
     }
 
@@ -65,8 +48,6 @@ final class Session {
         self.note = note
         self.bookTitle = nil
         self.subjectName = nil
-        self.mediaSeriesName = nil
         self.exerciseLogs = []
-        self.articleClips = []
     }
 }

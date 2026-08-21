@@ -37,10 +37,9 @@ final class ActiveTimer {
 
     var isPaused: Bool { state?.pauseStartedAt != nil }
 
-    /// 旧カテゴリ名("newspaper" / "podcast")で保存された計測状態も読めるようにする
     var category: ActivityCategory? {
         guard let raw = state?.categoryRaw else { return nil }
-        return ActivityCategory(rawValue: raw) ?? ActivityCategory.legacyRawValues[raw]
+        return ActivityCategory(rawValue: raw)
     }
 
     func start(category: ActivityCategory) {
@@ -72,8 +71,7 @@ final class ActiveTimer {
     /// タイマーを終了し、記録に必要な情報を返す。state はクリアされる。
     func finish(now: Date = Date()) -> (category: ActivityCategory, startedAt: Date, durationMinutes: Int)? {
         guard let current = state,
-              let category = ActivityCategory(rawValue: current.categoryRaw)
-                ?? ActivityCategory.legacyRawValues[current.categoryRaw] else {
+              let category = ActivityCategory(rawValue: current.categoryRaw) else {
             return nil
         }
         let seconds = Self.elapsedSeconds(now: now, state: current)

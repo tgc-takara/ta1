@@ -9,11 +9,9 @@ enum WeeklyTargets {
         guard let raw = UserDefaults.standard.dictionary(forKey: userDefaultsKey) as? [String: Int] else {
             return [:]
         }
-        // 旧カテゴリ("newspaper" / "podcast")や不明なキーが混ざっていても無視して読む。
+        // 廃止したカテゴリ名や不明なキーが混ざっていても無視して読む。
         return raw.reduce(into: [:]) { result, entry in
-            guard let category = ActivityCategory(rawValue: entry.key) ?? ActivityCategory.legacyRawValues[entry.key] else {
-                return
-            }
+            guard let category = ActivityCategory(rawValue: entry.key) else { return }
             result[category] = entry.value
         }
     }

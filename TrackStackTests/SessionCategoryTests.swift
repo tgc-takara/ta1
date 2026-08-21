@@ -1,21 +1,8 @@
 import XCTest
 @testable import TrackStack
 
-/// カテゴリ統合(新聞→記事 / ポッドキャスト→動画・音声)後も、
-/// 統合前に保存された記録が正しいカテゴリとして読めることを検証する。
+/// Session の categoryRaw を ActivityCategory として読むときの挙動を検証する。
 final class SessionCategoryTests: XCTestCase {
-
-    func testLegacyNewspaperRawValueReadsAsArticle() {
-        let session = Session(category: .reading, startedAt: Date(), durationMinutes: 20)
-        session.categoryRaw = "newspaper"
-        XCTAssertEqual(session.category, .article)
-    }
-
-    func testLegacyPodcastRawValueReadsAsMedia() {
-        let session = Session(category: .reading, startedAt: Date(), durationMinutes: 55)
-        session.categoryRaw = "podcast"
-        XCTAssertEqual(session.category, .media)
-    }
 
     /// 未知の値は既定(勉強)に倒す。カテゴリ不明で記録が消えるのを防ぐため。
     func testUnknownRawValueFallsBackToStudy() {
