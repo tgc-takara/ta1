@@ -28,7 +28,7 @@ enum ActivityCategory: String, Codable, CaseIterable, Identifiable {
     var color: Color {
         switch self {
         case .reading: Theme.dynamicColor(light: 0x2E4A63, dark: 0x7FA3C4)
-        case .training: Theme.dynamicColor(light: 0x8A5A2B, dark: 0xC89A63)
+        case .training: Theme.dynamicColor(light: 0xA93B2B, dark: 0xD06450)
         case .study: Theme.dynamicColor(light: 0x5B6E3C, dark: 0x9DB377)
         }
     }
