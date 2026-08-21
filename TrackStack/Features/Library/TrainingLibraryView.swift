@@ -34,7 +34,7 @@ struct TrainingLibraryView: View {
                                             .minimumScaleFactor(0.6)
                                             .multilineTextAlignment(.center)
                                     }
-                                    .frame(maxWidth: .infinity)
+                                    .frame(maxWidth: .infinity, minHeight: 64)
                                     .padding(.vertical, 8)
                                     .background(
                                         RoundedRectangle(cornerRadius: 10)

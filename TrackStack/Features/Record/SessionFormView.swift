@@ -195,7 +195,7 @@ struct SessionFormView: View {
             }
 
             if books.isEmpty {
-                Text("ライブラリの読書タブから本を追加できます")
+                Text("ライブラリの「読書」から本を追加できます")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -218,7 +218,7 @@ struct SessionFormView: View {
             }
 
             if subjects.isEmpty {
-                Text("ライブラリの勉強タブから科目を追加できます")
+                Text("ライブラリの「勉強」から科目を追加できます")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -328,7 +328,7 @@ struct SessionFormView: View {
             TextField("タイトル(任意)", text: $episodeTitle)
 
             if shows.isEmpty {
-                Text("ライブラリの動画・音声タブからシリーズを追加できます")
+                Text("ライブラリの「動画・音声」からシリーズを追加できます")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -349,8 +349,12 @@ struct SessionFormView: View {
             )
             LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 8) {
                 ForEach(durationPresets, id: \.self) { preset in
-                    Button(Formatters.duration(minutes: preset)) {
+                    Button {
                         durationMinutes = preset
+                    } label: {
+                        Text(Formatters.duration(minutes: preset))
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.bordered)
                     .font(.caption)

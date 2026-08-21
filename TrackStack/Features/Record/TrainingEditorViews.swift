@@ -135,7 +135,7 @@ private struct SetRow: View {
         if let onDelete {
             Button(role: .destructive, action: onDelete) {
                 Image(systemName: "minus.circle")
-                    .frame(width: 32, height: 44)
+                    .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.borderless)
@@ -161,16 +161,23 @@ private struct SetRow: View {
         .font(.caption)
     }
 
-    /// 重量の符号切り替え(マイナス = 加重で負荷を軽くする)
+    /// 重量の符号切り替え(マイナス = 加重で負荷を軽くする)。
+    /// 色だけでなく形(カプセル背景)でも状態を示す。
     private var signToggle: some View {
         Button {
             if set.weightKg != 0 {
                 set.weightKg = -set.weightKg
             }
         } label: {
-            Image(systemName: set.weightKg < 0 ? "minus.circle.fill" : "plusminus.circle")
+            Text(set.weightKg < 0 ? "−" : "±")
+                .font(.subheadline.bold())
                 .foregroundStyle(set.weightKg < 0 ? Color.orange : Color.secondary)
-                .frame(width: 40, height: 44)
+                .frame(width: 44, height: 44)
+                .background(
+                    set.weightKg < 0
+                        ? Capsule().fill(Color.orange.opacity(0.15))
+                        : Capsule().fill(Color.clear)
+                )
                 .contentShape(Rectangle())
         }
         .buttonStyle(.borderless)

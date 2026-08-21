@@ -38,7 +38,7 @@ struct ExerciseHistoryView: View {
         Group {
             if entries.isEmpty {
                 ContentUnavailableView(
-                    "記録がありません",
+                    "まだ記録がありません",
                     systemImage: bodyPart.symbolName,
                     description: Text("記録タブでこの種目を追加すると、ここに履歴が並びます")
                 )

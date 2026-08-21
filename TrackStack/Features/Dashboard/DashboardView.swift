@@ -11,6 +11,8 @@ struct DashboardView: View {
     @State private var enabledCategories: [ActivityCategory] = EnabledCategories.load()
     /// カテゴリ別の週の目標時間(分)。設定画面から戻ったときに読み直す。
     @State private var weeklyTargets: [ActivityCategory: Int] = WeeklyTargets.load()
+    /// 週の始まりの設定を反映したカレンダー。設定画面から戻ったときに読み直す。
+    @State private var appCalendar: Calendar = AppCalendar.current
     /// トレーニングは計測画面ではなく記録フォームを開く
     @State private var showingTrainingSheet = false
     @State private var trainingStartedAt = Date()
@@ -46,7 +48,7 @@ struct DashboardView: View {
     }
 
     private var weekSessions: [Session] {
-        StatsCalculator.sessionsInWeek(sessions, of: Date())
+        StatsCalculator.sessionsInWeek(sessions, of: Date(), calendar: appCalendar)
     }
 
     private var streak: Int {
@@ -75,6 +77,7 @@ struct DashboardView: View {
             .onAppear {
                 enabledCategories = EnabledCategories.load()
                 weeklyTargets = WeeklyTargets.load()
+                appCalendar = AppCalendar.current
             }
             .background(Theme.paper)
             .navigationTitle("ひとつみ")

@@ -20,10 +20,20 @@ struct SubjectListView: View {
             } else {
                 List {
                     ForEach(subjects) { subject in
-                        SubjectRowView(subject: subject)
+                        Button {
+                            editingSubject = subject
+                        } label: {
+                            HStack {
+                                SubjectRowView(subject: subject)
+                                Spacer(minLength: 0)
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.tertiary)
+                            }
                             .contentShape(Rectangle())
-                            .onTapGesture { editingSubject = subject }
-                            .listRowBackground(Theme.surface)
+                        }
+                        .buttonStyle(.plain)
+                        .listRowBackground(Theme.surface)
                     }
                     .onDelete { offsets in
                         for index in offsets {

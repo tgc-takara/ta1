@@ -12,6 +12,18 @@ struct SettingsView: View {
                     NavigationLink("週の目標時間") {
                         WeeklyTargetSettingsView()
                     }
+                    NavigationLink("週の始まり") {
+                        WeekStartSettingsView()
+                    }
+                }
+                .listRowBackground(Theme.surface)
+                Section("記録") {
+                    NavigationLink("インターバルタイマー") {
+                        IntervalPresetSettingsView()
+                    }
+                    NavigationLink("記録時間のプリセット") {
+                        DurationPresetSettingsView()
+                    }
                 }
                 .listRowBackground(Theme.surface)
                 Section("マスタ") {
@@ -26,12 +38,6 @@ struct SettingsView: View {
                     }
                     NavigationLink("勉強科目") {
                         SubjectManageView()
-                    }
-                    NavigationLink("インターバルタイマー") {
-                        IntervalPresetSettingsView()
-                    }
-                    NavigationLink("記録時間のプリセット") {
-                        DurationPresetSettingsView()
                     }
                 }
                 .listRowBackground(Theme.surface)
@@ -105,6 +111,52 @@ struct CategoryVisibilitySettingsView: View {
         }
         enabled = next
         EnabledCategories.save(ActivityCategory.allCases.filter(next.contains))
+    }
+}
+
+/// 週の始まり(「今週」の区切り)の設定。単一選択で、ホームの今週カードと
+/// 記録のカレンダーの週の区切りに使う。
+struct WeekStartSettingsView: View {
+    @State private var selected: WeekStart = WeekStart.load()
+
+    var body: some View {
+        List {
+            Section {
+                // Toggle + カスタム Binding だと2回目以降の切り替えを取りこぼしたため、
+                // 行タップ(Button)+チェックマークで表現する
+                ForEach(WeekStart.allCases) { start in
+                    Button {
+                        select(start)
+                    } label: {
+                        HStack {
+                            Text(start.label)
+                                .foregroundStyle(Theme.ink)
+                            Spacer()
+                            Image(systemName: selected == start ? "checkmark.circle.fill" : "circle")
+                                .foregroundStyle(selected == start ? Theme.ai : Theme.rule)
+                                .font(.title3)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            } footer: {
+                Text("ホームの「今週」と、記録のカレンダーの週の区切りに使います")
+            }
+            .listRowBackground(Theme.surface)
+        }
+        .scrollContentBackground(.hidden)
+        .background(Theme.paper)
+        .navigationTitle("週の始まり")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func select(_ start: WeekStart) {
+        // @State は書き換えた直後に読み返すと古い値が返ることがあるため、
+        // 必ずローカルで新しい値を作ってから反映・保存する
+        let next = start
+        selected = next
+        WeekStart.save(next)
     }
 }
 

@@ -29,7 +29,7 @@ struct ExportView: View {
                 Divider().padding(.leading, 16)
                 exportRow(
                     title: "CSV(表計算用)",
-                    subtitle: "セッション一覧を表計算ソフトで開けます",
+                    subtitle: "記録の一覧を表計算ソフトで開けます",
                     action: exportCSV
                 )
                 Divider().padding(.leading, 16)

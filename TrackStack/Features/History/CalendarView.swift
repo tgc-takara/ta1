@@ -4,7 +4,7 @@ import SwiftUI
 struct MonthCalendarView: View {
     let sessions: [Session]
 
-    private let calendar = Calendar.current
+    @State private var calendar: Calendar = AppCalendar.current
 
     @State private var displayedMonth: Date = Calendar.current.startOfDay(for: Date())
     @State private var selectedDay: Date? = Calendar.current.startOfDay(for: Date())
@@ -70,6 +70,7 @@ struct MonthCalendarView: View {
             selectedDaySection
         }
         .padding(.vertical)
+        .onAppear { calendar = AppCalendar.current }
         .sheet(item: $editingSession) { session in
             SessionFormView(sessionToEdit: session)
         }
@@ -172,7 +173,7 @@ struct MonthCalendarView: View {
                     .foregroundStyle(.secondary)
                     .padding(.horizontal)
             } else if selectedDaySessions.isEmpty {
-                Text("記録がありません")
+                Text("まだ記録がありません")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal)

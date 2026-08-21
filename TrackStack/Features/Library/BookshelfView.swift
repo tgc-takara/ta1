@@ -76,10 +76,20 @@ struct BookshelfView: View {
             } else {
                 List {
                     ForEach(filtered) { book in
-                        BookRowView(book: book)
+                        Button {
+                            editingBook = book
+                        } label: {
+                            HStack {
+                                BookRowView(book: book)
+                                Spacer(minLength: 0)
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.tertiary)
+                            }
                             .contentShape(Rectangle())
-                            .onTapGesture { editingBook = book }
-                            .listRowBackground(Theme.surface)
+                        }
+                        .buttonStyle(.plain)
+                        .listRowBackground(Theme.surface)
                     }
                     .onDelete { offsets in
                         for index in offsets {
@@ -316,7 +326,7 @@ struct BookFormView: View {
                     }
                 } footer: {
                     if genres.isEmpty {
-                        Text("ジャンルは設定タブの「読書ジャンル」から登録できます")
+                        Text("ジャンルは設定の「読書ジャンル」から登録できます")
                     }
                 }
 

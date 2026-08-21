@@ -20,10 +20,20 @@ struct PodcastShowListView: View {
             } else {
                 List {
                     ForEach(shows) { show in
-                        PodcastShowRowView(show: show)
+                        Button {
+                            editingShow = show
+                        } label: {
+                            HStack {
+                                PodcastShowRowView(show: show)
+                                Spacer(minLength: 0)
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.tertiary)
+                            }
                             .contentShape(Rectangle())
-                            .onTapGesture { editingShow = show }
-                            .listRowBackground(Theme.surface)
+                        }
+                        .buttonStyle(.plain)
+                        .listRowBackground(Theme.surface)
                     }
                     .onDelete { offsets in
                         for index in offsets {
@@ -153,7 +163,7 @@ struct PodcastShowFormView: View {
                 }
                 Button("キャンセル", role: .cancel) {}
             } message: {
-                Text("記録は残り、シリーズとの紐付けだけが外れます")
+                Text("削除しても過去の記録は残ります(シリーズ名は記録側に残ります)")
             }
         }
     }

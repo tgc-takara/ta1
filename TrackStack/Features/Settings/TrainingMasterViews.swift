@@ -102,7 +102,7 @@ struct SubjectManageView: View {
                 }
             } footer: {
                 if !subjects.isEmpty {
-                    Text("タップで編集、左スワイプで削除できます。削除すると過去の記録の科目表示も外れます(記録自体は残ります)")
+                    Text("タップで編集、左スワイプで削除できます。削除しても過去の記録は残ります(科目名は記録側に残ります)")
                 }
             }
             .listRowBackground(Theme.surface)
@@ -199,7 +199,7 @@ struct SubjectEditFormView: View {
                 }
                 Button("キャンセル", role: .cancel) {}
             } message: {
-                Text("削除すると過去の記録の科目表示も外れます(記録自体は残ります)")
+                Text("削除しても過去の記録は残ります(科目名は記録側に残ります)")
             }
         }
     }

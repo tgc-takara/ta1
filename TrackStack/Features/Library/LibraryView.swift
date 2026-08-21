@@ -51,7 +51,7 @@ struct LibraryView: View {
             Label(category.label, systemImage: category.symbolName)
                 .font(.subheadline)
                 .padding(.horizontal, 14)
-                .frame(minHeight: 36)
+                .frame(minHeight: 44)
                 .background(
                     Capsule().fill(isSelected ? category.color.opacity(0.18) : Theme.surface)
                 )

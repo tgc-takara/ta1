@@ -60,9 +60,13 @@ struct HistoryView: View {
                             ForEach(grouped, id: \.day) { group in
                                 Section {
                                     ForEach(group.sessions) { session in
-                                        SessionRowView(session: session)
-                                            .contentShape(Rectangle())
-                                            .onTapGesture { editingSession = session }
+                                        Button {
+                                            editingSession = session
+                                        } label: {
+                                            SessionRowView(session: session)
+                                                .contentShape(Rectangle())
+                                        }
+                                        .buttonStyle(.plain)
                                     }
                                     .onDelete { offsets in
                                         delete(offsets, in: group.sessions)
