@@ -41,15 +41,15 @@ struct SessionRowView: View {
     private var title: String {
         switch session.category {
         case .reading:
-            return session.book?.title ?? "読書"
+            return session.book?.title ?? session.bookTitle ?? "読書"
         case .training:
             return session.menuName ?? "トレーニング"
         case .study:
-            return session.subject?.name ?? "勉強"
+            return session.subject?.name ?? session.subjectName ?? "勉強"
         case .article:
             return "記事"
         case .media:
-            return session.podcastShow?.name ?? "動画・音声"
+            return session.podcastShow?.name ?? session.mediaSeriesName ?? "動画・音声"
         }
     }
 

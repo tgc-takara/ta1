@@ -27,6 +27,8 @@ struct SessionFormView: View {
     // 読書
     @State private var selectedBook: Book?
     @State private var progressPercent: Double
+    /// スライダーを操作したかどうか。触っていない編集では本の進捗に書き戻さない。
+    @State private var progressEdited = false
 
     // 勉強
     @State private var selectedSubject: Subject?
@@ -178,13 +180,17 @@ struct SessionFormView: View {
             }
             .onChange(of: selectedBook) { _, newBook in
                 progressPercent = Double(newBook?.progressPercent ?? 0)
+                // 本を切り替えただけでは「進捗を編集した」扱いにしない
+                progressEdited = false
             }
 
             if selectedBook != nil {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("この本の進捗 \(Int(progressPercent))%")
                         .font(.subheadline)
-                    Slider(value: $progressPercent, in: 0...100, step: 1)
+                    Slider(value: $progressPercent, in: 0...100, step: 1) { _ in
+                        progressEdited = true
+                    }
                 }
             }
 
@@ -197,7 +203,7 @@ struct SessionFormView: View {
             Text("読書")
         } footer: {
             if selectedBook != nil {
-                Text("進捗は本に保存されます(記録ごとには残りません)")
+                Text("スライダーを動かしたときだけ、本の進捗を更新します")
             }
         }
     }
@@ -423,9 +429,12 @@ struct SessionFormView: View {
         // カテゴリ固有フィールドは一度クリアしてから現在のカテゴリ分だけ設定する
         // (編集でカテゴリを切り替えたとき古い関連が残らないように)
         session.book = nil
+        session.bookTitle = nil
         session.subject = nil
+        session.subjectName = nil
         session.menuName = nil
         session.podcastShow = nil
+        session.mediaSeriesName = nil
         session.episodeTitle = nil
         for log in session.exerciseLogs {
             context.delete(log)
@@ -439,7 +448,11 @@ struct SessionFormView: View {
         switch category {
         case .reading:
             session.book = selectedBook
-            if let book = selectedBook {
+            session.bookTitle = selectedBook?.title
+            // 新規記録か、スライダーを操作したときだけ本の進捗を書き換える
+            // (過去の記録をメモだけ直したときに本の進捗が動かないように)
+            let shouldUpdateProgress = sessionToEdit == nil || progressEdited
+            if let book = selectedBook, shouldUpdateProgress {
                 let percent = Int(progressPercent)
                 book.progressPercent = percent
                 if percent >= 100 {
@@ -450,6 +463,7 @@ struct SessionFormView: View {
             }
         case .study:
             session.subject = selectedSubject
+            session.subjectName = selectedSubject?.name
         case .training:
             session.menuName = menuName
             for (index, draft) in exerciseDrafts.enumerated() {
@@ -466,6 +480,7 @@ struct SessionFormView: View {
             }
         case .media:
             session.podcastShow = selectedShow
+            session.mediaSeriesName = selectedShow?.name
             session.episodeTitle = episodeTitle
                 .trimmingCharacters(in: .whitespacesAndNewlines)
                 .nilIfEmpty

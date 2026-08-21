@@ -31,7 +31,7 @@ xcodebuild -scheme TrackStack -destination 'platform=iOS Simulator,name=iPhone 1
 - 設定の切り替え UI に `Toggle` + カスタム `Binding` を使うと2回目以降の操作を取りこぼしたため、行タップ(Button)+チェックマークで実装している。`@State` は書き換え直後に読み返すと古い値が返るため、必ずローカル変数で新しい値を作ってから反映・保存する
 - `Session` が全カテゴリ共通の記録単位。カテゴリ固有情報(Book / Subject / ExerciseLog / ArticleClip / PodcastShow)は関連エンティティに逃がし、横断集計(合計時間・ストリーク)は Session だけで完結させる
 - enum は SwiftData に rawValue(String)で保存し、computed property で enum に変換(`categoryRaw` / `category` パターン)
-- 種目名・メニュー名は Session 側にスナップショットで保持(マスタ削除後も記録が壊れない)
+- 種目名・メニュー名・本のタイトル・科目名・シリーズ名は Session 側にスナップショットで保持(マスタ削除後も記録が壊れない)
 - 読書進捗は Book のみが持つ(記録側には持たない)。%(0–100)のみでページ数は持たない
 - 本の「読んだ記録」は読書セッションそのもの(専用エンティティは持たない)。本全体のメモだけ `Book.review` に持つ
 - 記事(新聞・Web記事・レポート)は1日1件のセッションに `ArticleClip`(見出し / URL / メモ)を複数ぶら下げる。動画・音声(ポッドキャスト・動画講座・セミナー)はシリーズをマスタにし、タイトルは Session 側に持つ。シリーズの型名が `PodcastShow` なのは SwiftData の保存済みエンティティ名を壊さないため(UI 文言は「シリーズ」)

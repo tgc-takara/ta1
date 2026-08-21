@@ -36,7 +36,8 @@ enum ExportService {
     }
 
     struct ExportArticleClip: Encodable {
-        var title: String
+        /// 見出し。入力欄を廃止したので空のことが多く、その場合は出力しない
+        var title: String?
         var url: String?
         var memo: String?
     }
@@ -162,10 +163,15 @@ enum ExportService {
                     author: sourceBook.author,
                     genre: sourceBook.genreName
                 )
+            } else if let title = session.bookTitle {
+                // 本を削除済みでもタイトルのスナップショットは残す
+                book = ExportSessionBook(title: title, author: nil, genre: nil)
             }
         case .study:
             if let sourceSubject = session.subject {
                 subject = ExportSessionSubject(name: sourceSubject.name)
+            } else if let name = session.subjectName {
+                subject = ExportSessionSubject(name: name)
             }
         case .training:
             menu = session.menuName
@@ -175,11 +181,11 @@ enum ExportService {
         case .article:
             let clips = session.articleClips.sorted { $0.order < $1.order }
             articles = clips.isEmpty ? nil : clips.map {
-                ExportArticleClip(title: $0.title, url: $0.urlString, memo: $0.memo)
+                ExportArticleClip(title: $0.title.nilIfEmpty, url: $0.urlString, memo: $0.memo)
             }
         case .media:
             media = ExportSessionMedia(
-                series: session.podcastShow?.name,
+                series: session.podcastShow?.name ?? session.mediaSeriesName,
                 title: session.episodeTitle
             )
         }
@@ -258,10 +264,10 @@ enum ExportService {
 
             switch session.category {
             case .reading:
-                title = session.book?.title ?? ""
+                title = session.book?.title ?? session.bookTitle ?? ""
                 detail = ""
             case .study:
-                title = session.subject?.name ?? ""
+                title = session.subject?.name ?? session.subjectName ?? ""
                 detail = ""
             case .training:
                 title = session.menuName ?? ""
@@ -271,12 +277,13 @@ enum ExportService {
                     .joined(separator: "・")
             case .article:
                 title = "記事"
+                // 見出し欄は廃止したので、表示名(メモ→URL の順で代用)を使う
                 detail = session.articleClips
                     .sorted { $0.order < $1.order }
-                    .map(\.title)
+                    .map(\.displayTitle)
                     .joined(separator: "・")
             case .media:
-                title = session.podcastShow?.name ?? ""
+                title = session.podcastShow?.name ?? session.mediaSeriesName ?? ""
                 detail = session.episodeTitle ?? ""
             }
 
@@ -360,7 +367,7 @@ enum ExportService {
         if !readingSessions.isEmpty {
             var lines = ["## 📚 読書 \(readingMinutes)分"]
             for session in readingSessions {
-                let title = session.book?.title ?? ""
+                let title = session.book?.title ?? session.bookTitle ?? ""
                 lines.append("- 『\(title)』\(noteSuffix(session.note))")
             }
             sections.append(lines.joined(separator: "\n"))
@@ -370,6 +377,12 @@ enum ExportService {
             let menuNames = orderedUnique(trainingSessions.compactMap { $0.menuName }.filter { !$0.isEmpty })
             let menuSuffix = menuNames.isEmpty ? "" : "(\(menuNames.joined(separator: "・")))"
             var lines = ["## 💪 トレーニング \(trainingMinutes)分\(menuSuffix)"]
+            // 種目行はセッションをまたいでまとめるため、セッションのメモは見出し直後に引用行で出す
+            for session in trainingSessions {
+                if let note = session.note, !note.isEmpty {
+                    lines.append("> \(note)")
+                }
+            }
             let logs = trainingSessions
                 .flatMap { $0.exerciseLogs }
                 .sorted { $0.order < $1.order }
@@ -382,7 +395,7 @@ enum ExportService {
         if !studySessions.isEmpty {
             var lines = ["## ✏️ 勉強 \(studyMinutes)分"]
             for session in studySessions {
-                let name = session.subject?.name ?? ""
+                let name = session.subject?.name ?? session.subjectName ?? ""
                 lines.append("- \(name)\(noteSuffix(session.note))")
             }
             sections.append(lines.joined(separator: "\n"))
@@ -394,9 +407,16 @@ enum ExportService {
                 .flatMap { $0.articleClips }
                 .sorted { $0.order < $1.order }
             for clip in clips {
-                // URL があれば Obsidian からそのまま開けるようリンク記法にする
-                let title = clip.urlString.map { "[\(clip.title)](\($0))" } ?? clip.title
-                lines.append("- \(title)\(noteSuffix(clip.memo))")
+                if let urlString = clip.urlString {
+                    // URL があれば Obsidian からそのまま開けるようリンク記法にする
+                    // (見出しが空なら URL 文字列をそのまま表示名にする)
+                    let label = clip.title.isEmpty ? urlString : clip.title
+                    lines.append("- [\(label)](\(urlString))\(noteSuffix(clip.memo))")
+                } else {
+                    // URL がないときは表示名がメモ自身になりうるので、メモを二重に出さない
+                    let suffix = clip.title.isEmpty ? "" : noteSuffix(clip.memo)
+                    lines.append("- \(clip.displayTitle)\(suffix)")
+                }
             }
             sections.append(lines.joined(separator: "\n"))
         }
@@ -404,7 +424,7 @@ enum ExportService {
         if !mediaSessions.isEmpty {
             var lines = ["## 🎧 動画・音声 \(mediaMinutes)分"]
             for session in mediaSessions {
-                let name = session.podcastShow?.name ?? ""
+                let name = session.podcastShow?.name ?? session.mediaSeriesName ?? ""
                 let episode = session.episodeTitle.map { " \($0)" } ?? ""
                 lines.append("- \(name)\(episode)\(noteSuffix(session.note))")
             }

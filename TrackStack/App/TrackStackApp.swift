@@ -9,7 +9,8 @@ struct TrackStackApp: App {
     /// 起動時のデータ準備(旧データ移行・プリセット投入)を何回目まで済ませたか。
     /// この値を上げたときだけ再実行し、通常の起動では SwiftData に一切触らない。
     /// 2: 新聞→記事 / ポッドキャスト→動画・音声 のカテゴリ統合
-    private static let setupVersion = 2
+    /// 3: 読書/勉強/動画音声のスナップショット埋め戻し
+    private static let setupVersion = 3
     private static let setupVersionKey = "startupSetupVersion"
 
     init() {
@@ -38,10 +39,34 @@ struct TrackStackApp: App {
         migrateLegacyCategories(in: context)
         seedPresets(in: context)
         seedSubjectPresets(in: context)
-        if context.hasChanges {
-            try? context.save()
+        backfillSessionSnapshots(in: context)
+        guard context.hasChanges else {
+            defaults.set(setupVersion, forKey: setupVersionKey)
+            return
         }
-        defaults.set(setupVersion, forKey: setupVersionKey)
+        do {
+            try context.save()
+            defaults.set(setupVersion, forKey: setupVersionKey)
+        } catch {
+            // 保存できなかったときは次回起動でやり直せるよう、版数は上げない
+        }
+    }
+
+    /// 本・科目・シリーズの名前を Session 側のスナップショットへ埋め戻す。
+    /// マスタを削除しても、その記録が「どれだったか」を残すため。
+    private static func backfillSessionSnapshots(in context: ModelContext) {
+        guard let sessions = try? context.fetch(FetchDescriptor<Session>()) else { return }
+        for session in sessions {
+            if session.bookTitle == nil, let title = session.book?.title {
+                session.bookTitle = title
+            }
+            if session.subjectName == nil, let name = session.subject?.name {
+                session.subjectName = name
+            }
+            if session.mediaSeriesName == nil, let name = session.podcastShow?.name {
+                session.mediaSeriesName = name
+            }
+        }
     }
 
     /// 画面タイトル(ナビゲーションバーの大見出し)を明朝体にする。

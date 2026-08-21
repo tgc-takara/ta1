@@ -44,7 +44,7 @@ struct WeeklyChartView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("今週の推移")
+            Text("直近7日の推移")
                 .font(.headline)
 
             if hasAnyRecord {

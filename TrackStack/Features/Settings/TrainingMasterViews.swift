@@ -393,6 +393,8 @@ struct ExerciseEditFormView: View {
                             Text(part.label).tag(part)
                         }
                     }
+                } footer: {
+                    Text("名前を変えると、過去の記録とメニューの種目名も一緒に変わります")
                 }
 
                 Section("メモ") {
@@ -414,7 +416,11 @@ struct ExerciseEditFormView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("保存") {
-                        exercise.name = trimmedName
+                        // @State は書き換え直後に読み返すと古い値が返るため、先にローカルへ取る
+                        let newName = trimmedName
+                        let oldName = exercise.name
+                        Exercise.propagateRename(from: oldName, to: newName, in: context)
+                        exercise.name = newName
                         exercise.bodyPart = bodyPart
                         exercise.memo = memo.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : memo
                         dismiss()
@@ -430,6 +436,36 @@ struct ExerciseEditFormView: View {
                 Button("キャンセル", role: .cancel) {}
             } message: {
                 Text("削除しても過去の記録は残ります")
+            }
+        }
+    }
+}
+
+extension Exercise {
+    /// 種目名を変えたとき、名前のスナップショットを持つ側(過去の記録とメニュー)も同じ名前に揃える。
+    /// これをしないと履歴・「前回の記録」が名前で引けなくなり、記録が消えたように見える。
+    static func propagateRename(from oldName: String, to newName: String, in context: ModelContext) {
+        guard oldName != newName, !newName.isEmpty else { return }
+
+        let descriptor = FetchDescriptor<ExerciseLog>(
+            predicate: #Predicate { $0.exerciseName == oldName }
+        )
+        if let logs = try? context.fetch(descriptor) {
+            for log in logs {
+                log.exerciseName = newName
+            }
+        }
+
+        // items は Codable の配列なので、作り直して代入しないと保存されない
+        if let menus = try? context.fetch(FetchDescriptor<WorkoutMenu>()) {
+            for menu in menus where menu.items.contains(where: { $0.exerciseName == oldName }) {
+                menu.items = menu.items.map { item in
+                    var item = item
+                    if item.exerciseName == oldName {
+                        item.exerciseName = newName
+                    }
+                    return item
+                }
             }
         }
     }

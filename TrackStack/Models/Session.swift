@@ -15,9 +15,13 @@ final class Session {
 
     // MARK: 読書
     var book: Book?
+    /// 本のタイトルのスナップショット(本を削除しても記録が「どれだったか」分かるように)
+    var bookTitle: String?
 
     // MARK: 勉強
     var subject: Subject?
+    /// 科目名のスナップショット(科目を削除しても記録が「どれだったか」分かるように)
+    var subjectName: String?
 
     // MARK: トレーニング
     @Relationship(deleteRule: .cascade, inverse: \ExerciseLog.session)
@@ -33,6 +37,8 @@ final class Session {
     // MARK: 動画・音声
     /// シリーズ(番組名 / 動画講座名 / セミナー名)
     var podcastShow: PodcastShow?
+    /// シリーズ名のスナップショット(シリーズを削除しても記録が「どれだったか」分かるように)
+    var mediaSeriesName: String?
     /// 回・エピソードのタイトル(任意)
     var episodeTitle: String?
 
@@ -57,6 +63,9 @@ final class Session {
         self.startedAt = startedAt
         self.durationMinutes = durationMinutes
         self.note = note
+        self.bookTitle = nil
+        self.subjectName = nil
+        self.mediaSeriesName = nil
         self.exerciseLogs = []
         self.articleClips = []
     }
