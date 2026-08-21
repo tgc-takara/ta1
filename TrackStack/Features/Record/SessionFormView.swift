@@ -280,11 +280,14 @@ struct SessionFormView: View {
                         durationMinutes = preset
                     } label: {
                         Text(Formatters.duration(minutes: preset))
+                            .font(.caption.bold())
                             .frame(maxWidth: .infinity, minHeight: 44)
-                            .contentShape(Rectangle())
+                            .background(durationMinutes == preset ? Color.accentColor : Color(.secondarySystemFill))
+                            .foregroundStyle(durationMinutes == preset ? Color.white : Color.primary)
+                            .clipShape(Capsule())
+                            .contentShape(Capsule())
                     }
-                    .buttonStyle(.bordered)
-                    .font(.caption)
+                    .buttonStyle(.plain)
                 }
             }
         }

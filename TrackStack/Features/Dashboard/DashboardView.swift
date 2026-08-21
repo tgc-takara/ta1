@@ -64,6 +64,7 @@ struct DashboardView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
+                    titleRow
                     if activeTimer.isRunning {
                         timerBanner
                     }
@@ -82,7 +83,8 @@ struct DashboardView: View {
                 appCalendar = AppCalendar.current
             }
             .background(Theme.paper)
-            .navigationTitle("ひとつみ")
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Menu {
@@ -144,6 +146,22 @@ struct DashboardView: View {
                 )
             }
         }
+    }
+
+    /// ホーム上部の見出し行。アプリアイコン + タイトル。カードではないので余白は VStack に任せる。
+    private var titleRow: some View {
+        HStack(spacing: 10) {
+            Image("AppIconImage")
+                .resizable()
+                .frame(width: 36, height: 36)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            Text("ひとつみ")
+                .font(.mincho(size: 34))
+                .fontDesign(.serif)
+                .foregroundStyle(Theme.ink)
+            Spacer()
+        }
+        .padding(.top, 4)
     }
 
     /// 計測中バナー。タップするとタイマー画面を再表示する(アプリ再起動後の復元経路)。
