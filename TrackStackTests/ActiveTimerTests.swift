@@ -82,4 +82,54 @@ final class ActiveTimerTests: XCTestCase {
         XCTAssertFalse(timer.isRunning)
         XCTAssertNil(defaults.data(forKey: "activeTimerState"))
     }
+
+    // MARK: ActiveTimerState の後方互換(pomodoro キーのない旧データ)
+
+    func testDecodesLegacyStateWithoutPomodoroKey() throws {
+        let json = """
+        {
+          "categoryRaw": "study",
+          "startedAt": 700000000,
+          "accumulatedPauseSeconds": 30
+        }
+        """
+        let decoded = try JSONDecoder().decode(ActiveTimerState.self, from: Data(json.utf8))
+        XCTAssertEqual(decoded.categoryRaw, "study")
+        XCTAssertEqual(decoded.accumulatedPauseSeconds, 30)
+        XCTAssertNil(decoded.pauseStartedAt)
+        XCTAssertNil(decoded.pomodoro)
+    }
+
+    func testStateRoundTripKeepsPomodoro() throws {
+        let pomodoro = Pomodoro.start(settings: PomodoroSettings(), now: now)
+        let state = ActiveTimerState(
+            categoryRaw: ActivityCategory.study.rawValue,
+            startedAt: now,
+            accumulatedPauseSeconds: 0,
+            pauseStartedAt: nil,
+            pomodoro: pomodoro
+        )
+        let data = try JSONEncoder().encode(state)
+        let decoded = try JSONDecoder().decode(ActiveTimerState.self, from: data)
+        XCTAssertEqual(decoded.pomodoro, pomodoro)
+    }
+
+    // MARK: ポモドーロの記録時間(作業局面の合計だけ)
+
+    func testFinishWithPomodoroRecordsOnlyWorkMinutes() {
+        let defaults = UserDefaults(suiteName: "ActiveTimerTests.\(UUID().uuidString)")!
+        let timer = ActiveTimer(defaults: defaults)
+        timer.startPomodoro(category: .study)
+        XCTAssertTrue(timer.isPomodoro)
+
+        // 作業を10分でスキップ → 休憩に入り、そこから10分後に終了する
+        guard let started = timer.state?.startedAt else { return XCTFail("state がない") }
+        timer.skipPhase(now: started.addingTimeInterval(600))
+        XCTAssertEqual(timer.pomodoroState?.phase, .shortBreak)
+
+        let result = timer.finish(now: started.addingTimeInterval(1200))
+        // 休憩の10分は含めず、作業の10分だけが記録される
+        XCTAssertEqual(result?.durationMinutes, 10)
+        XCTAssertFalse(timer.isRunning)
+    }
 }

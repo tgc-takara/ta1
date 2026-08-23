@@ -11,6 +11,36 @@ struct ActiveTimerState: Codable {
     var accumulatedPauseSeconds: TimeInterval
     /// 現在一時停止中ならその開始時刻。計測中は nil
     var pauseStartedAt: Date?
+    /// ポモドーロモードのときの進行状態。ストップウォッチのときは nil
+    var pomodoro: PomodoroState?
+
+    init(
+        categoryRaw: String,
+        startedAt: Date,
+        accumulatedPauseSeconds: TimeInterval,
+        pauseStartedAt: Date?,
+        pomodoro: PomodoroState? = nil
+    ) {
+        self.categoryRaw = categoryRaw
+        self.startedAt = startedAt
+        self.accumulatedPauseSeconds = accumulatedPauseSeconds
+        self.pauseStartedAt = pauseStartedAt
+        self.pomodoro = pomodoro
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case categoryRaw, startedAt, accumulatedPauseSeconds, pauseStartedAt, pomodoro
+    }
+
+    // pomodoro を持たない旧データも読めるように decodeIfPresent で補う
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.categoryRaw = try container.decode(String.self, forKey: .categoryRaw)
+        self.startedAt = try container.decode(Date.self, forKey: .startedAt)
+        self.accumulatedPauseSeconds = try container.decode(TimeInterval.self, forKey: .accumulatedPauseSeconds)
+        self.pauseStartedAt = try container.decodeIfPresent(Date.self, forKey: .pauseStartedAt)
+        self.pomodoro = try container.decodeIfPresent(PomodoroState.self, forKey: .pomodoro)
+    }
 }
 
 /// 実行中のタイマーを管理する。@Observable(iOS 17 Observation フレームワーク)で
@@ -42,6 +72,11 @@ final class ActiveTimer {
         return ActivityCategory(rawValue: raw)
     }
 
+    /// ポモドーロモードで動作中かどうか
+    var isPomodoro: Bool { state?.pomodoro != nil }
+
+    var pomodoroState: PomodoroState? { state?.pomodoro }
+
     func start(category: ActivityCategory) {
         let now = Date()
         state = ActiveTimerState(
@@ -50,7 +85,56 @@ final class ActiveTimer {
             accumulatedPauseSeconds: 0,
             pauseStartedAt: nil
         )
+        PomodoroNotifier.cancel()
         persist()
+    }
+
+    /// ポモドーロとして開始する。設定は開始時にスナップショットする。
+    func startPomodoro(category: ActivityCategory) {
+        let now = Date()
+        let pomodoro = Pomodoro.start(settings: PomodoroSettings.load(), now: now)
+        state = ActiveTimerState(
+            categoryRaw: category.rawValue,
+            startedAt: now,
+            accumulatedPauseSeconds: 0,
+            pauseStartedAt: nil,
+            pomodoro: pomodoro
+        )
+        persist()
+        PomodoroNotifier.schedule(for: pomodoro)
+    }
+
+    /// ストップウォッチ / ポモドーロを切り替える。同じカテゴリで開始し直す(開始時刻は今にリセット)。
+    func switchMode(toPomodoro: Bool) {
+        guard let category else { return }
+        if toPomodoro {
+            startPomodoro(category: category)
+        } else {
+            start(category: category)
+        }
+    }
+
+    /// ポモドーロの局面を現在時刻に追いつかせる。局面が変わったら true を返す(呼び出し側が音を鳴らす)。
+    @discardableResult
+    func tick(now: Date = Date()) -> Bool {
+        guard var current = state, let pomodoro = current.pomodoro else { return false }
+        let advanced = Pomodoro.advancedIfNeeded(state: pomodoro, now: now)
+        guard advanced != pomodoro else { return false }
+        current.pomodoro = advanced
+        state = current
+        persist()
+        PomodoroNotifier.schedule(for: advanced, now: now)
+        return true
+    }
+
+    /// 現在の局面をスキップして次へ進める。
+    func skipPhase(now: Date = Date()) {
+        guard var current = state, let pomodoro = current.pomodoro else { return }
+        let next = Pomodoro.skip(state: pomodoro, now: now)
+        current.pomodoro = next
+        state = current
+        persist()
+        PomodoroNotifier.schedule(for: next, now: now)
     }
 
     func pause() {
@@ -74,8 +158,14 @@ final class ActiveTimer {
               let category = ActivityCategory(rawValue: current.categoryRaw) else {
             return nil
         }
-        let seconds = Self.elapsedSeconds(now: now, state: current)
-        let minutes = Self.minutes(fromSeconds: seconds)
+        let minutes: Int
+        if let pomodoro = current.pomodoro {
+            // ポモドーロは休憩を含めず、作業局面の合計だけを記録する
+            let workSeconds = Pomodoro.workSeconds(now: now, state: pomodoro)
+            minutes = max(1, Int((Double(workSeconds) / 60).rounded(.up)))
+        } else {
+            minutes = Self.minutes(fromSeconds: Self.elapsedSeconds(now: now, state: current))
+        }
         clear()
         return (category: category, startedAt: current.startedAt, durationMinutes: minutes)
     }
@@ -85,6 +175,7 @@ final class ActiveTimer {
     }
 
     private func clear() {
+        PomodoroNotifier.cancel()
         state = nil
         defaults.removeObject(forKey: Self.userDefaultsKey)
     }

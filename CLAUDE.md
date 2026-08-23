@@ -36,6 +36,7 @@ xcodebuild -scheme TrackStack -destination 'platform=iOS Simulator,name=iPhone 1
 - 本の「読んだ記録」は読書セッションそのもの(専用エンティティは持たない)。本全体のメモだけ `Book.review` に持つ
 - `WorkoutMenu` は入力の雛形。記録実体は常に Session + ExerciseLog
 - トレーニングだけ「記録開始」でタイマー画面ではなく記録フォームを開く(計測しながら書き込む運用)。終了ボタンで開始からの経過時間を実施時間として保存し、`TrainingSummaryView` でその日の内容をスクショ共有用に表示する
+- 勉強・読書のタイマーにはポモドーロモードがある(`Features/Timer/Pomodoro.swift` が純粋ロジック、状態は `ActiveTimerState.pomodoro` に同居)。記録時間は作業局面の合計のみ。局面の切り替わりはフォアグラウンドで音、バックグラウンドではローカル通知
 - 入力欄を UIViewRepresentable(UITextField)で包むと List の行内でタップを受け取れない。数値欄は SwiftUI の TextField + FocusState で実装する
 - 起動時のデータ移行・プリセット投入は `TrackStackApp.setupVersion` で初回のみ実行する。毎回走らせると起動のたびに全レコードをフェッチすることになるため、プリセットを追加したときだけこの版数を上げる
 - 週の始まり(日曜/月曜/システム)は `Shared/WeekStart.swift` の設定で切り替える。「今週」の集計とカレンダーは `Calendar.current` ではなく `AppCalendar.current` を使う(ホームのグラフは暦週ではなく直近7日なので対象外)

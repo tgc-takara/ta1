@@ -171,20 +171,35 @@ struct DashboardView: View {
         } label: {
             TimelineView(.periodic(from: .now, by: 1)) { context in
                 if let state = activeTimer.state, let category = activeTimer.category {
-                    let elapsed = ActiveTimer.elapsedSeconds(now: context.date, state: state)
                     HStack {
                         Image(systemName: category.symbolName)
                             .foregroundStyle(category.color)
-                        Text("計測中: \(category.label)")
-                            .font(.subheadline.bold())
-                            .foregroundStyle(.primary)
-                        Spacer()
-                        Text(Formatters.elapsedClock(seconds: elapsed))
-                            .font(.subheadline.monospacedDigit())
-                            .foregroundStyle(.secondary)
+                        if let pomodoro = activeTimer.pomodoroState {
+                            // ポモドーロ中は局面と残り時間を出す(音は TimerView 側だけで鳴らす)
+                            let remaining = Pomodoro.remainingSeconds(now: context.date, state: pomodoro)
+                            Text("ポモドーロ \(pomodoro.phase.label)")
+                                .font(.subheadline.bold())
+                                .foregroundStyle(.primary)
+                            Spacer()
+                            Text(Formatters.countdownClock(seconds: remaining))
+                                .font(.subheadline.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                        } else {
+                            let elapsed = ActiveTimer.elapsedSeconds(now: context.date, state: state)
+                            Text("計測中: \(category.label)")
+                                .font(.subheadline.bold())
+                                .foregroundStyle(.primary)
+                            Spacer()
+                            Text(Formatters.elapsedClock(seconds: elapsed))
+                                .font(.subheadline.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                        }
                     }
                     .padding()
                     .cardStyle()
+                    .onChange(of: context.date) { _, newValue in
+                        activeTimer.tick(now: newValue)
+                    }
                 }
             }
         }

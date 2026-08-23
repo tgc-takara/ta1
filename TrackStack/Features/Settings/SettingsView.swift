@@ -24,6 +24,9 @@ struct SettingsView: View {
                     NavigationLink("記録時間のプリセット") {
                         DurationPresetSettingsView()
                     }
+                    NavigationLink("ポモドーロ") {
+                        PomodoroSettingsView()
+                    }
                 }
                 .listRowBackground(Theme.surface)
                 Section("マスタ") {
@@ -208,6 +211,87 @@ struct WeeklyTargetSettingsView: View {
         }
         targets = next
         WeeklyTargets.save(next)
+    }
+}
+
+/// ポモドーロの長さの設定。ここで変更した値が、次にポモドーロを開始したときのスナップショットになる。
+struct PomodoroSettingsView: View {
+    @State private var settings: PomodoroSettings = PomodoroSettings.load()
+
+    var body: some View {
+        List {
+            Section {
+                Stepper(
+                    value: Binding(
+                        get: { settings.workMinutes },
+                        set: { minutes in update { $0.workMinutes = minutes } }
+                    ),
+                    in: 5...90,
+                    step: 5
+                ) {
+                    row(title: "作業", value: Formatters.duration(minutes: settings.workMinutes))
+                }
+
+                Stepper(
+                    value: Binding(
+                        get: { settings.breakMinutes },
+                        set: { minutes in update { $0.breakMinutes = minutes } }
+                    ),
+                    in: 1...30,
+                    step: 1
+                ) {
+                    row(title: "休憩", value: Formatters.duration(minutes: settings.breakMinutes))
+                }
+
+                Stepper(
+                    value: Binding(
+                        get: { settings.longBreakMinutes },
+                        set: { minutes in update { $0.longBreakMinutes = minutes } }
+                    ),
+                    in: 5...60,
+                    step: 5
+                ) {
+                    row(title: "長い休憩", value: Formatters.duration(minutes: settings.longBreakMinutes))
+                }
+
+                Stepper(
+                    value: Binding(
+                        get: { settings.cyclesBeforeLongBreak },
+                        set: { count in update { $0.cyclesBeforeLongBreak = count } }
+                    ),
+                    in: 2...8,
+                    step: 1
+                ) {
+                    row(title: "長い休憩までの回数", value: "\(settings.cyclesBeforeLongBreak)回")
+                }
+            } footer: {
+                Text("変更は次にポモドーロを開始したときから反映されます")
+            }
+            .listRowBackground(Theme.surface)
+        }
+        .scrollContentBackground(.hidden)
+        .background(Theme.paper)
+        .navigationTitle("ポモドーロ")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func row(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .foregroundStyle(Theme.ink)
+            Text(value)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    /// @State は書き換えた直後に読み返すと古い値が返ることがあるため、
+    /// 必ずローカル変数で新しい設定を作ってから反映・保存する
+    private func update(_ apply: (inout PomodoroSettings) -> Void) {
+        var next = settings
+        apply(&next)
+        settings = next
+        PomodoroSettings.save(next)
     }
 }
 
