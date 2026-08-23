@@ -28,6 +28,9 @@ struct SessionFormView: View {
     @State private var progressPercent: Double
     /// スライダーを操作したかどうか。触っていない編集では本の進捗に書き戻さない。
     @State private var progressEdited = false
+    @State private var showingBookPicker = false
+    /// 新規記録の初期選択(最後に読んだ未読了の本)を一度だけ行うためのフラグ
+    @State private var didPreselectBook = false
 
     // 勉強
     @State private var selectedSubject: Subject?
@@ -108,6 +111,9 @@ struct SessionFormView: View {
                     )
                 }
             }
+            .sheet(isPresented: $showingBookPicker) {
+                BookPickerView(selected: selectedBook) { selectedBook = $0 }
+            }
             .confirmationDialog(
                 "トレーニングを終了しますか?",
                 isPresented: $showingFinishConfirm,
@@ -156,17 +162,20 @@ struct SessionFormView: View {
 
     private var readingSection: some View {
         Section {
-            Picker("本", selection: $selectedBook) {
-                Text("選択なし").tag(nil as Book?)
-                ForEach(books) { book in
-                    Text(book.title).tag(book as Book?)
+            Button {
+                showingBookPicker = true
+            } label: {
+                HStack {
+                    Text("本").foregroundStyle(Theme.ink)
+                    Spacer()
+                    Text(selectedBook?.title ?? "選択なし")
+                        .foregroundStyle(selectedBook == nil ? .secondary : Theme.ink)
+                        .lineLimit(1)
+                    Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
                 }
+                .contentShape(Rectangle())
             }
-            .onChange(of: selectedBook) { _, newBook in
-                progressPercent = Double(newBook?.progressPercent ?? 0)
-                // 本を切り替えただけでは「進捗を編集した」扱いにしない
-                progressEdited = false
-            }
+            .buttonStyle(.plain)
 
             if selectedBook != nil {
                 VStack(alignment: .leading, spacing: 4) {
@@ -188,6 +197,18 @@ struct SessionFormView: View {
         } footer: {
             if selectedBook != nil {
                 Text("スライダーを動かしたときだけ、本の進捗を更新します")
+            }
+        }
+        .onChange(of: selectedBook) { _, newBook in
+            progressPercent = Double(newBook?.progressPercent ?? 0)
+            // 本を切り替えただけでは「進捗を編集した」扱いにしない
+            progressEdited = false
+        }
+        .onAppear {
+            guard !didPreselectBook else { return }
+            didPreselectBook = true
+            if sessionToEdit == nil, selectedBook == nil {
+                selectedBook = RecentBooks.mostRecentUnfinished(in: context)
             }
         }
     }

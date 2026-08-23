@@ -2,6 +2,22 @@ import SwiftUI
 import SwiftData
 import PhotosUI
 
+/// 本棚の表示形式(リスト / 表紙グリッド)。UserDefaults に保存する。
+enum BookshelfLayout: String {
+    case list, grid
+
+    static let userDefaultsKey = "bookshelfLayout"
+
+    static func load() -> BookshelfLayout {
+        guard let raw = UserDefaults.standard.string(forKey: userDefaultsKey) else { return .list }
+        return BookshelfLayout(rawValue: raw) ?? .list
+    }
+
+    static func save(_ layout: BookshelfLayout) {
+        UserDefaults.standard.set(layout.rawValue, forKey: userDefaultsKey)
+    }
+}
+
 /// 本棚(ステータス別の書籍一覧)。ジャンルでの絞り込みに対応。
 struct BookshelfView: View {
     @Environment(\.modelContext) private var context
@@ -13,6 +29,7 @@ struct BookshelfView: View {
     @State private var genreFilter: String?
     @State private var showingAdd = false
     @State private var editingBook: Book?
+    @State private var layout: BookshelfLayout = BookshelfLayout.load()
 
     private var filtered: [Book] {
         books.filter { book in
@@ -73,6 +90,20 @@ struct BookshelfView: View {
                             : "「\(genreFilter ?? "")」で絞り込み中です"
                     )
                 )
+            } else if layout == .grid {
+                ScrollView {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 3), spacing: 16) {
+                        ForEach(filtered) { book in
+                            Button { editingBook = book } label: { BookCoverCell(book: book) }
+                                .buttonStyle(.plain)
+                                .contextMenu {
+                                    Button("削除", role: .destructive) { context.delete(book) }
+                                }
+                        }
+                    }
+                    .padding(.horizontal)
+                    .padding(.bottom)
+                }
             } else {
                 List {
                     ForEach(filtered) { book in
@@ -102,6 +133,15 @@ struct BookshelfView: View {
         }
         .background(Theme.paper)
         .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    let next: BookshelfLayout = layout == .list ? .grid : .list
+                    layout = next
+                    BookshelfLayout.save(next)
+                } label: {
+                    Image(systemName: layout == .list ? "square.grid.2x2" : "list.bullet")
+                }
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     showingAdd = true
@@ -201,6 +241,70 @@ struct BookRowView: View {
                 .scaledToFill()
                 .frame(width: 40, height: 56)
                 .clipShape(RoundedRectangle(cornerRadius: 4))
+        }
+    }
+}
+
+/// 本棚グリッド表示のセル。表紙があれば画像、なければ背表紙風のプレースホルダー。
+struct BookCoverCell: View {
+    let book: Book
+
+    var body: some View {
+        VStack(spacing: 6) {
+            cover
+
+            Text(book.title)
+                .font(.caption)
+                .lineLimit(2)
+                .frame(height: 32, alignment: .top)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(Theme.ink)
+
+            if book.status != .wantToRead {
+                ProgressView(value: Double(book.progressPercent), total: 100)
+                    .tint(ActivityCategory.reading.color)
+            }
+
+            if book.status == .finished, let rating = book.rating {
+                Text(String(repeating: "★", count: rating))
+                    .font(.caption2)
+                    .foregroundStyle(.yellow)
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    @ViewBuilder
+    private var cover: some View {
+        if let data = book.coverImageData, let image = UIImage(data: data) {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+                .aspectRatio(2 / 3, contentMode: .fit)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+        } else {
+            RoundedRectangle(cornerRadius: 6)
+                .fill(ActivityCategory.reading.color.opacity(0.15))
+                .aspectRatio(2 / 3, contentMode: .fit)
+                .overlay(alignment: .leading) {
+                    Rectangle()
+                        .fill(ActivityCategory.reading.color.opacity(0.5))
+                        .frame(width: 4)
+                        .clipShape(
+                            .rect(
+                                topLeadingRadius: 6,
+                                bottomLeadingRadius: 6
+                            )
+                        )
+                }
+                .overlay {
+                    Text(book.title)
+                        .font(.caption)
+                        .lineLimit(4)
+                        .multilineTextAlignment(.center)
+                        .padding(8)
+                        .foregroundStyle(Theme.ink)
+                }
         }
     }
 }
