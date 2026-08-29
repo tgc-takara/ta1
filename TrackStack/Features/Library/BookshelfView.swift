@@ -276,36 +276,42 @@ struct BookCoverCell: View {
 
     @ViewBuilder
     private var cover: some View {
-        if let data = book.coverImageData, let image = UIImage(data: data) {
-            Image(uiImage: image)
-                .resizable()
-                .scaledToFill()
-                .aspectRatio(2 / 3, contentMode: .fit)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-        } else {
-            RoundedRectangle(cornerRadius: 6)
-                .fill(ActivityCategory.reading.color.opacity(0.15))
-                .aspectRatio(2 / 3, contentMode: .fit)
-                .overlay(alignment: .leading) {
-                    Rectangle()
-                        .fill(ActivityCategory.reading.color.opacity(0.5))
-                        .frame(width: 4)
-                        .clipShape(
-                            .rect(
-                                topLeadingRadius: 6,
-                                bottomLeadingRadius: 6
-                            )
+        Color.clear
+            .aspectRatio(2 / 3, contentMode: .fit)
+            .overlay {
+                if let data = book.coverImageData, let image = UIImage(data: data) {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    placeholder
+                }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+
+    private var placeholder: some View {
+        RoundedRectangle(cornerRadius: 6)
+            .fill(ActivityCategory.reading.color.opacity(0.15))
+            .overlay(alignment: .leading) {
+                Rectangle()
+                    .fill(ActivityCategory.reading.color.opacity(0.5))
+                    .frame(width: 4)
+                    .clipShape(
+                        .rect(
+                            topLeadingRadius: 6,
+                            bottomLeadingRadius: 6
                         )
-                }
-                .overlay {
-                    Text(book.title)
-                        .font(.caption)
-                        .lineLimit(4)
-                        .multilineTextAlignment(.center)
-                        .padding(8)
-                        .foregroundStyle(Theme.ink)
-                }
-        }
+                    )
+            }
+            .overlay {
+                Text(book.title)
+                    .font(.caption)
+                    .lineLimit(4)
+                    .multilineTextAlignment(.center)
+                    .padding(8)
+                    .foregroundStyle(Theme.ink)
+            }
     }
 }
 
@@ -488,6 +494,7 @@ struct BookFormView: View {
                     }
                 }
             }
+            .keyboardDismissable()
             .navigationTitle(bookToEdit == nil ? "本を追加" : "本を編集")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

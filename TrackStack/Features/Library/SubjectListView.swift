@@ -169,6 +169,7 @@ struct SubjectFormView: View {
                     }
                 }
             }
+            .keyboardDismissable()
             .navigationTitle(subjectToEdit == nil ? "科目を追加" : "科目を編集")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

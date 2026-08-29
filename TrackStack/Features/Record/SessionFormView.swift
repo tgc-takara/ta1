@@ -92,6 +92,7 @@ struct SessionFormView: View {
                 durationSection
                 noteSection
             }
+            .keyboardDismissable()
             .scrollContentBackground(.hidden)
             .background(Theme.paper)
             .navigationTitle(sessionToEdit == nil ? "記録を追加" : "記録を編集")

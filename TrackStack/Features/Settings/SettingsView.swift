@@ -349,6 +349,7 @@ struct BookGenreListView: View {
             }
             .listRowBackground(Theme.surface)
         }
+        .keyboardDismissable()
         .scrollContentBackground(.hidden)
         .background(Theme.paper)
         .navigationTitle("読書ジャンル")
@@ -409,6 +410,7 @@ struct GenreEditFormView: View {
                     }
                 }
             }
+            .keyboardDismissable()
             .navigationTitle("ジャンルを編集")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -480,6 +482,7 @@ struct IntervalPresetSettingsView: View {
             }
             .listRowBackground(Theme.surface)
         }
+        .keyboardDismissable()
         .scrollContentBackground(.hidden)
         .background(Theme.paper)
         .navigationTitle("インターバルタイマー")
@@ -530,6 +533,7 @@ struct DurationPresetSettingsView: View {
             }
             .listRowBackground(Theme.surface)
         }
+        .keyboardDismissable()
         .scrollContentBackground(.hidden)
         .background(Theme.paper)
         .navigationTitle("記録時間のプリセット")

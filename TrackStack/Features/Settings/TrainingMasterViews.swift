@@ -117,6 +117,7 @@ struct SubjectManageView: View {
             }
             .listRowBackground(Theme.surface)
         }
+        .keyboardDismissable()
         .scrollContentBackground(.hidden)
         .background(Theme.paper)
         .navigationTitle("勉強科目")
@@ -177,6 +178,7 @@ struct SubjectEditFormView: View {
                     }
                 }
             }
+            .keyboardDismissable()
             .navigationTitle("科目を編集")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -408,6 +410,7 @@ struct ExerciseEditFormView: View {
                     }
                 }
             }
+            .keyboardDismissable()
             .navigationTitle("種目を編集")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

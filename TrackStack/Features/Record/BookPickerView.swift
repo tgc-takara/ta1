@@ -68,6 +68,7 @@ struct BookPickerView: View {
                     }
                 }
             }
+            .keyboardDismissable()
             .scrollContentBackground(.hidden)
             .background(Theme.paper)
             .listRowBackground(Theme.surface)

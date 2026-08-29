@@ -153,6 +153,7 @@ struct ExerciseFormView: View {
                     }
                 }
             }
+            .keyboardDismissable()
             .navigationTitle("種目を追加")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -210,6 +211,7 @@ struct MenuFormView: View {
                     }
                 }
             }
+            .keyboardDismissable()
             .navigationTitle(menuToEdit == nil ? "メニューを作成" : "メニューを編集")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
