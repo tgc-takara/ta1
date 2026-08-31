@@ -1,14 +1,18 @@
 import SwiftUI
 import Charts
 
-/// 直近7日間(今日を最終日)のカテゴリ別積み上げ棒グラフ。
-struct WeeklyChartView: View {
+/// カテゴリ別積み上げ棒グラフの本体。日数・終了日・カレンダーをパラメータ化し、
+/// ホームの「直近7日」とウィークリー振り返りの「対象週7日」の両方から再利用する。
+struct DailyStackedChart: View {
     let sessions: [Session]
+    var days: Int = 7
+    var endingOn: Date = Date()
+    var calendar: Calendar = .current
     /// 設定で表示オンにしているカテゴリ(親から渡して設定変更を反映させる)
     var enabledCategories: [ActivityCategory] = EnabledCategories.load()
 
     private var daily: [(date: Date, minutesByCategory: [ActivityCategory: Int])] {
-        StatsCalculator.dailyMinutes(sessions, days: 7, endingOn: Date())
+        StatsCalculator.dailyMinutes(sessions, days: days, endingOn: endingOn, calendar: calendar)
     }
 
     /// グラフ表示用にフラット化したデータ点(日 × カテゴリ)
@@ -19,7 +23,7 @@ struct WeeklyChartView: View {
         let minutes: Int
     }
 
-    /// 表示するカテゴリ(設定でオフでも、7日間に記録があるものは合計が合わなくなるので含める)
+    /// 表示するカテゴリ(設定でオフでも、期間内に記録があるものは合計が合わなくなるので含める)
     private var visibleCategories: [ActivityCategory] {
         let totals = daily.reduce(into: [ActivityCategory: Int]()) { result, entry in
             for (category, minutes) in entry.minutesByCategory {
@@ -43,10 +47,7 @@ struct WeeklyChartView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("直近7日の推移")
-                .font(.headline)
-
+        Group {
             if hasAnyRecord {
                 Chart(points) { point in
                     BarMark(
@@ -86,6 +87,22 @@ struct WeeklyChartView: View {
                     .foregroundStyle(Theme.inkSecondary)
                     .frame(maxWidth: .infinity, minHeight: 120, alignment: .center)
             }
+        }
+    }
+}
+
+/// 直近7日間(今日を最終日)のカテゴリ別積み上げ棒グラフ。ホーム専用のカード見出し付きラッパー。
+struct WeeklyChartView: View {
+    let sessions: [Session]
+    /// 設定で表示オンにしているカテゴリ(親から渡して設定変更を反映させる)
+    var enabledCategories: [ActivityCategory] = EnabledCategories.load()
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("直近7日の推移")
+                .font(.headline)
+
+            DailyStackedChart(sessions: sessions, enabledCategories: enabledCategories)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()

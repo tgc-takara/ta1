@@ -72,6 +72,37 @@ final class StatsCalculatorTests: XCTestCase {
         XCTAssertEqual(result.first?.id, todaySession.id)
     }
 
+    // MARK: sessionsInWeek
+
+    func testSessionsInWeekIncludesWeekStartBoundary() {
+        var weekCalendar = Calendar(identifier: .gregorian)
+        weekCalendar.firstWeekday = 1 // 日曜始まり
+        let anchor = day(0) // 今日(startOfDay)を基準に週を求める
+        let week = weekCalendar.dateInterval(of: .weekOfYear, for: anchor)!
+        // 週初日0:00ちょうどのセッションは含まれる
+        let atWeekStart = Session(category: .study, startedAt: week.start, durationMinutes: 10)
+        let result = StatsCalculator.sessionsInWeek([atWeekStart], of: anchor, calendar: weekCalendar)
+        XCTAssertEqual(result.map(\.id), [atWeekStart.id])
+    }
+
+    func testSessionsInWeekExcludesNextWeekStartBoundary() {
+        var weekCalendar = Calendar(identifier: .gregorian)
+        weekCalendar.firstWeekday = 1 // 日曜始まり
+        let anchor = day(0)
+        let week = weekCalendar.dateInterval(of: .weekOfYear, for: anchor)!
+        // 翌週初日0:00ちょうどのセッションは含まれない(排他的境界)
+        let atNextWeekStart = Session(category: .study, startedAt: week.end, durationMinutes: 10)
+        let result = StatsCalculator.sessionsInWeek([atNextWeekStart], of: anchor, calendar: weekCalendar)
+        XCTAssertTrue(result.isEmpty)
+    }
+
+    func testSessionsInWeekExcludesOtherWeeks() {
+        let inWeek = Session(category: .study, startedAt: day(0), durationMinutes: 10)
+        let lastWeek = Session(category: .study, startedAt: day(-8), durationMinutes: 10)
+        let result = StatsCalculator.sessionsInWeek([inWeek, lastWeek], of: day(0))
+        XCTAssertEqual(result.map(\.id), [inWeek.id])
+    }
+
     // MARK: dailyMinutes
 
     func testDailyMinutesReturnsSevenDaysEndingOnGivenDate() {

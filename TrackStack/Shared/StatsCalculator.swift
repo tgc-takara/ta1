@@ -48,10 +48,12 @@ enum StatsCalculator {
         sessions.filter { calendar.isDate($0.startedAt, inSameDayAs: day) }
     }
 
-    /// 指定日を含む週(週の開始曜日は calendar 設定に従う)のセッションのみ抽出
+    /// 指定日を含む週(週の開始曜日は calendar 設定に従う)のセッションのみ抽出。
+    /// 週初日0:00は含み、翌週初日0:00は含まない(排他的境界)。
+    /// DateInterval.contains は両端を含む(inclusive)ため、境界の重複を避けるためここでは使わない。
     static func sessionsInWeek(_ sessions: [Session], of day: Date, calendar: Calendar = .current) -> [Session] {
         guard let week = calendar.dateInterval(of: .weekOfYear, for: day) else { return [] }
-        return sessions.filter { week.contains($0.startedAt) }
+        return sessions.filter { $0.startedAt >= week.start && $0.startedAt < week.end }
     }
 
     /// endingOn を最終日として days 日分(古い順)のカテゴリ別分数を返す。

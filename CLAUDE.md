@@ -40,7 +40,8 @@ xcodebuild -scheme TrackStack -destination 'platform=iOS Simulator,name=iPhone 1
 - 入力欄を UIViewRepresentable(UITextField)で包むと List の行内でタップを受け取れない。数値欄は SwiftUI の TextField + FocusState で実装する
 - 起動時のデータ移行・プリセット投入は `TrackStackApp.setupVersion` で初回のみ実行する。毎回走らせると起動のたびに全レコードをフェッチすることになるため、プリセットを追加したときだけこの版数を上げる
 - 週の始まり(日曜/月曜/システム)は `Shared/WeekStart.swift` の設定で切り替える。「今週」の集計とカレンダーは `Calendar.current` ではなく `AppCalendar.current` を使う(ホームのグラフは暦週ではなく直近7日なので対象外)
-- 集計ロジックは `Shared/StatsCalculator.swift` に純粋関数で分離(ユニットテスト対象)
+- 記録タブはリスト/カレンダー/ウィークリーの3表示。ウィークリー(`Features/History/WeeklyReviewView.swift`)は週送りで過去週を振り返るスクショ共有用カード(X/Instagramボタンは `Shared/SNSShareButtons.swift` に共通化、グラフ本体は `DailyStackedChart` としてホームと共用)
+- 集計ロジックは `Shared/StatsCalculator.swift` に純粋関数で分離(ユニットテスト対象)。`sessionsInWeek` は週境界を排他的に扱う(`DateInterval.contains` は終端を含むため使わない)
 - UI 文言は日本語
 
 ## 開発状況(2026-08-15 時点)

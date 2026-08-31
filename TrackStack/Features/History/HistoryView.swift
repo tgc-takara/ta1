@@ -13,6 +13,7 @@ struct HistoryView: View {
     private enum HistoryViewMode: String, CaseIterable, Identifiable {
         case list
         case calendar
+        case weekly
 
         var id: String { rawValue }
 
@@ -20,6 +21,7 @@ struct HistoryView: View {
             switch self {
             case .list: "リスト"
             case .calendar: "カレンダー"
+            case .weekly: "ウィークリー"
             }
         }
     }
@@ -91,6 +93,11 @@ struct HistoryView: View {
                 case .calendar:
                     ScrollView {
                         MonthCalendarView(sessions: filtered)
+                    }
+                    .background(Theme.paper)
+                case .weekly:
+                    ScrollView {
+                        WeeklyReviewView(sessions: filtered)
                     }
                     .background(Theme.paper)
                 }

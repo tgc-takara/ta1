@@ -48,6 +48,16 @@ enum Formatters {
         return String(format: "%d:%02d", m, s)
     }
 
+    /// 週の DateInterval を「M/d〜M/d」形式に整形する。
+    /// interval.end は翌週の開始(排他的境界)なので、表示上の最終日は1日前にする。
+    static func weekRange(_ interval: DateInterval) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "ja_JP")
+        formatter.dateFormat = "M/d"
+        let lastDay = interval.end.addingTimeInterval(-1)
+        return "\(formatter.string(from: interval.start))〜\(formatter.string(from: lastDay))"
+    }
+
     /// インターバルタイマーのプリセット秒数を人が読みやすい形式に整形する。
     /// 45 → "45秒"、120 → "2分"、90 → "1分30秒"
     static func presetLabel(seconds: Int) -> String {
