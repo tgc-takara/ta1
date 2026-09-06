@@ -107,9 +107,7 @@ struct SessionFormView: View {
             }
             .sheet(isPresented: $showingExercisePicker) {
                 ExercisePickerView { exercise in
-                    exerciseDrafts.append(
-                        ExerciseDraft(name: exercise.name, bodyPart: exercise.bodyPart)
-                    )
+                    exerciseDrafts.append(makeDraft(for: exercise))
                 }
             }
             .sheet(isPresented: $showingBookPicker) {
@@ -330,7 +328,33 @@ struct SessionFormView: View {
 
     private func apply(_ menu: WorkoutMenu) {
         menuName = menu.name
-        exerciseDrafts = menu.items.map(ExerciseDraft.init(item:))
+        var drafts = menu.items.map(ExerciseDraft.init(item:))
+        let strengthNames = drafts.filter { !$0.bodyPart.isCardio }.map(\.name)
+        let previousSets = PreviousRecord.latestSets(
+            for: strengthNames,
+            excluding: sessionToEdit?.id,
+            in: context
+        )
+        for index in drafts.indices where !drafts[index].bodyPart.isCardio {
+            guard let previous = previousSets[drafts[index].name], !previous.isEmpty else { continue }
+            drafts[index].sets = PreviousRecord.prefillWeights(drafts[index].sets, from: previous)
+        }
+        exerciseDrafts = drafts
+    }
+
+    /// 種目を単体追加するときのドラフトを作る。筋トレ系は前回の最後のセットの重量を先頭セットに反映する。
+    private func makeDraft(for exercise: Exercise) -> ExerciseDraft {
+        var draft = ExerciseDraft(name: exercise.name, bodyPart: exercise.bodyPart, cardioMetric: exercise.cardioMetric)
+        guard !exercise.bodyPart.isCardio else { return draft }
+        let previousSets = PreviousRecord.latestSets(
+            for: [exercise.name],
+            excluding: sessionToEdit?.id,
+            in: context
+        )
+        if let last = previousSets[exercise.name]?.last {
+            draft.sets = PreviousRecord.prefillWeights(draft.sets, from: [last])
+        }
+        return draft
     }
 
     /// 直近のトレーニングセッション(編集中のものを除く)の内容を複製する

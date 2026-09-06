@@ -48,6 +48,9 @@ struct SettingsView: View {
                     NavigationLink("エクスポート") {
                         ExportView()
                     }
+                    NavigationLink("自動バックアップ") {
+                        AutoBackupSettingsView()
+                    }
                 }
                 .listRowBackground(Theme.surface)
                 Section("このアプリ") {

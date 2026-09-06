@@ -138,6 +138,7 @@ struct ExerciseFormView: View {
 
     @State private var name = ""
     @State private var bodyPart: BodyPart = .chest
+    @State private var cardioMetric: CardioMetric = .distance
 
     private var trimmedName: String {
         name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -152,6 +153,12 @@ struct ExerciseFormView: View {
                         Text(part.label).tag(part)
                     }
                 }
+                if bodyPart.isCardio {
+                    Picker("記録する値", selection: $cardioMetric) {
+                        Text(CardioMetric.distance.label).tag(CardioMetric.distance)
+                        Text(CardioMetric.floors.label).tag(CardioMetric.floors)
+                    }
+                }
             }
             .keyboardDismissable()
             .navigationTitle("種目を追加")
@@ -162,7 +169,11 @@ struct ExerciseFormView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("保存") {
-                        context.insert(Exercise(name: trimmedName, bodyPart: bodyPart))
+                        context.insert(Exercise(
+                            name: trimmedName,
+                            bodyPart: bodyPart,
+                            cardioMetric: bodyPart.isCardio ? cardioMetric : .distance
+                        ))
                         dismiss()
                     }
                     .disabled(trimmedName.isEmpty)
@@ -225,7 +236,7 @@ struct MenuFormView: View {
             }
             .sheet(isPresented: $showingExercisePicker) {
                 ExercisePickerView { exercise in
-                    drafts.append(ExerciseDraft(name: exercise.name, bodyPart: exercise.bodyPart))
+                    drafts.append(ExerciseDraft(name: exercise.name, bodyPart: exercise.bodyPart, cardioMetric: exercise.cardioMetric))
                 }
             }
         }

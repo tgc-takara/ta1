@@ -9,37 +9,59 @@ struct ExerciseDraft: Identifiable, Hashable {
     var name: String
     var bodyPart: BodyPart
     var sets: [SetRecord]
+    /// 有酸素のとき、距離/階数のどちらを記録するか
+    var cardioMetric: CardioMetric
     var distanceKm: Double
     var durationMinutes: Int
+    var floorsUp: Int
+    var floorsDown: Int
 
-    init(name: String, bodyPart: BodyPart) {
+    init(name: String, bodyPart: BodyPart, cardioMetric: CardioMetric = .distance) {
         self.name = name
         self.bodyPart = bodyPart
         self.sets = bodyPart.isCardio ? [] : [SetRecord(weightKg: 20, reps: 10)]
+        self.cardioMetric = cardioMetric
         self.distanceKm = 0
         self.durationMinutes = 0
+        self.floorsUp = 0
+        self.floorsDown = 0
     }
 
     init(log: ExerciseLog) {
         self.name = log.exerciseName
         self.bodyPart = log.bodyPart
         self.sets = log.sets
+        self.cardioMetric = (log.floorsUp != nil || log.floorsDown != nil) ? .floors : .distance
         self.distanceKm = log.distanceKm ?? 0
         self.durationMinutes = log.durationMinutes ?? 0
+        self.floorsUp = log.floorsUp ?? 0
+        self.floorsDown = log.floorsDown ?? 0
     }
 
     init(item: MenuItem) {
         self.name = item.exerciseName
         self.bodyPart = item.bodyPart
         self.sets = item.defaultSets
+        self.cardioMetric = item.cardioMetric
         self.distanceKm = item.defaultDistanceKm ?? 0
         self.durationMinutes = item.defaultDurationMinutes ?? 0
+        self.floorsUp = item.defaultFloorsUp ?? 0
+        self.floorsDown = item.defaultFloorsDown ?? 0
     }
 
     func makeLog(order: Int) -> ExerciseLog {
         let log = ExerciseLog(exerciseName: name, bodyPart: bodyPart, order: order)
         if bodyPart.isCardio {
-            log.distanceKm = distanceKm > 0 ? distanceKm : nil
+            switch cardioMetric {
+            case .distance:
+                log.distanceKm = distanceKm > 0 ? distanceKm : nil
+                log.floorsUp = nil
+                log.floorsDown = nil
+            case .floors:
+                log.distanceKm = nil
+                log.floorsUp = floorsUp > 0 ? floorsUp : nil
+                log.floorsDown = floorsDown > 0 ? floorsDown : nil
+            }
             log.durationMinutes = durationMinutes > 0 ? durationMinutes : nil
         } else {
             log.sets = sets
@@ -52,8 +74,11 @@ struct ExerciseDraft: Identifiable, Hashable {
             exerciseName: name,
             kindRaw: bodyPart.rawValue,
             defaultSets: bodyPart.isCardio ? [] : sets,
-            defaultDistanceKm: bodyPart.isCardio && distanceKm > 0 ? distanceKm : nil,
-            defaultDurationMinutes: bodyPart.isCardio && durationMinutes > 0 ? durationMinutes : nil
+            defaultDistanceKm: bodyPart.isCardio && cardioMetric == .distance && distanceKm > 0 ? distanceKm : nil,
+            defaultDurationMinutes: bodyPart.isCardio && durationMinutes > 0 ? durationMinutes : nil,
+            defaultFloorsUp: bodyPart.isCardio && cardioMetric == .floors && floorsUp > 0 ? floorsUp : nil,
+            defaultFloorsDown: bodyPart.isCardio && cardioMetric == .floors && floorsDown > 0 ? floorsDown : nil,
+            metricRaw: bodyPart.isCardio ? cardioMetric.rawValue : nil
         )
     }
 }

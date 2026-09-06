@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 
 struct DashboardView: View {
+    @Environment(DeepLinkRouter.self) private var deepLinkRouter
     @Query(sort: \Session.startedAt, order: .reverse) private var sessions: [Session]
     @State private var showingRecordSheet = false
     @State private var activeTimer = ActiveTimer()
@@ -34,6 +35,19 @@ struct DashboardView: View {
         } else {
             activeTimer.start(category: category)
             showingTimerSheet = true
+        }
+    }
+
+    /// ウィジェットから渡されたディープリンクを1件だけ処理して消す。
+    /// 消し忘れると画面が再描画されるたびに同じシートを開いてしまうため、先に nil へ戻す。
+    private func consumePendingDeepLink() {
+        guard let pending = deepLinkRouter.pending else { return }
+        deepLinkRouter.pending = nil
+        switch pending {
+        case .start(let category):
+            start(category)
+        case .record:
+            showingRecordSheet = true
         }
     }
 
@@ -81,6 +95,10 @@ struct DashboardView: View {
                 enabledCategories = EnabledCategories.load()
                 weeklyTargets = WeeklyTargets.load()
                 appCalendar = AppCalendar.current
+                consumePendingDeepLink()
+            }
+            .onChange(of: deepLinkRouter.pending) { _, _ in
+                consumePendingDeepLink()
             }
             .background(Theme.paper)
             .navigationTitle("")

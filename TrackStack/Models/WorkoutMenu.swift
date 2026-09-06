@@ -9,9 +9,18 @@ struct MenuItem: Codable, Hashable {
     var defaultSets: [SetRecord]
     var defaultDistanceKm: Double?
     var defaultDurationMinutes: Int?
+    /// cardio のうち階数計測(階段)のとき
+    var defaultFloorsUp: Int?
+    var defaultFloorsDown: Int?
+    /// CardioMetric.rawValue。旧データ(nil)は距離扱い。
+    var metricRaw: String?
 
     var bodyPart: BodyPart {
         BodyPart(rawValue: kindRaw) ?? .chest
+    }
+
+    var cardioMetric: CardioMetric {
+        metricRaw.flatMap(CardioMetric.init(rawValue:)) ?? .distance
     }
 }
 

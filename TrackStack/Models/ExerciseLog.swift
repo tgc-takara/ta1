@@ -44,6 +44,9 @@ final class ExerciseLog {
     /// cardio のとき
     var distanceKm: Double?
     var durationMinutes: Int?
+    /// cardio のうち階数計測(階段)のとき
+    var floorsUp: Int?
+    var floorsDown: Int?
     /// 表示順
     var order: Int
 

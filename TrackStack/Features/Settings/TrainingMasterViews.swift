@@ -363,6 +363,7 @@ struct ExerciseEditFormView: View {
 
     @State private var name: String
     @State private var bodyPart: BodyPart
+    @State private var cardioMetric: CardioMetric
     @State private var memo: String
     @State private var showingDeleteConfirm = false
 
@@ -371,6 +372,7 @@ struct ExerciseEditFormView: View {
         self.existingExercises = existingExercises
         _name = State(initialValue: exercise.name)
         _bodyPart = State(initialValue: exercise.bodyPart)
+        _cardioMetric = State(initialValue: exercise.cardioMetric)
         _memo = State(initialValue: exercise.memo ?? "")
     }
 
@@ -393,6 +395,12 @@ struct ExerciseEditFormView: View {
                     Picker("部位", selection: $bodyPart) {
                         ForEach(BodyPart.allCases) { part in
                             Text(part.label).tag(part)
+                        }
+                    }
+                    if bodyPart.isCardio {
+                        Picker("記録する値", selection: $cardioMetric) {
+                            Text(CardioMetric.distance.label).tag(CardioMetric.distance)
+                            Text(CardioMetric.floors.label).tag(CardioMetric.floors)
                         }
                     }
                 } footer: {
@@ -425,6 +433,7 @@ struct ExerciseEditFormView: View {
                         Exercise.propagateRename(from: oldName, to: newName, in: context)
                         exercise.name = newName
                         exercise.bodyPart = bodyPart
+                        exercise.cardioMetric = bodyPart.isCardio ? cardioMetric : .distance
                         exercise.memo = memo.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : memo
                         dismiss()
                     }

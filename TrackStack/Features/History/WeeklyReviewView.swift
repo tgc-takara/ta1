@@ -113,9 +113,7 @@ struct WeeklyReviewView: View {
                         .foregroundStyle(Theme.inkSecondary)
                 }
                 Spacer()
-                Text("ひとつみ")
-                    .font(.caption)
-                    .foregroundStyle(Theme.inkSecondary)
+                BrandMark()
             }
 
             Text(Formatters.duration(minutes: totalMinutes))

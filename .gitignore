@@ -15,8 +15,11 @@ build/
 .build-sim/
 .build-*/
 
-# XcodeGen が生成する Info.plist
+# XcodeGen が生成する Info.plist / entitlements
 TrackStack/Info.plist
+TrackStackWidget/Info.plist
+TrackStack/TrackStack.entitlements
+TrackStackWidget/TrackStackWidget.entitlements
 
 # macOS
 .DS_Store

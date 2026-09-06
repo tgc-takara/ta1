@@ -223,7 +223,9 @@ Claude / Codex に添付して「分析して」と頼める、自己記述的�
           "sets": [ { "weightKg": 60, "reps": 10, "isSingleArm": false },
                     { "weightKg": 60, "reps": 8, "isSingleArm": false } ] },
         { "name": "ランニング", "bodyPart": "cardio",
-          "distanceKm": 3.0, "durationMinutes": 20 }
+          "distanceKm": 3.0, "durationMinutes": 20 },
+        { "name": "階段", "bodyPart": "cardio",
+          "floorsUp": 12, "floorsDown": 12, "durationMinutes": 15 }
       ]
     }
   ],
@@ -237,15 +239,16 @@ Claude / Codex に添付して「分析して」と頼める、自己記述的�
 ```
 
 - キーは英語・camelCase、値の自由記述は日本語のまま。日時(`startedAt` / `exportedAt`)は ISO 8601(タイムゾーン付き)。日付のみの項目(`startedOn` / `finishedOn` / `examDate`)は `yyyy-MM-dd`。
-- `schemaVersion` を持たせ、将来の形式変更に備える。
+- `schemaVersion` を持たせ、将来の形式変更に備える。現在の実装値は `5`(有酸素「階段」の階数フィールド追加に伴い 4→5)。
 - 種目の分類は「筋トレ/有酸素」の2種ではなく、8部位(`BodyPart`: chest/shoulders/biceps/triceps/back/legs/abs/cardio)の rawValue を `bodyPart` として出力する(`kind` は使わない)。
 - `SetRecord` には片手セットかどうかを示す `isSingleArm` を含む。`weightKg` は加重アシスト種目のためマイナス値もあり得る。
+- 有酸素のうち「記録する値」が階数(階段)の種目は、`distanceKm` の代わりに `floorsUp`(上りの階数) / `floorsDown`(下りの階数)を持つ。距離計測の種目ではこの2キー自体を出力しない。
 - `Session` は `progressPercent`(読書の進捗)を持たない。進捗は `Book` 側のみが保持するため、JSON にセッションごとの進捗差分は出力しない。
 - `Book.coverImageData`(表紙写真)はサイズが大きいため JSON には含めない。
 - `Book.notes`(読んだ記録)は `createdAt` 昇順で出力する。記録がない本では `notes` キー自体を出力しない。
 
 #### CSV(セッションのフラット表)
-`date,category,duration_minutes,title,detail,note` の 1 行 1 セッション。表計算やスクリプトでの軽い集計用。`date` は `yyyy-MM-dd HH:mm`、`category` は日本語ラベル(読書/トレーニング/勉強)、`detail` はトレーニングの種目名を「・」区切りにしたもの(読書・勉強は空)。値に `,` `"` 改行が含まれる場合は RFC4180 に従いダブルクォートで囲みエスケープする。
+`date,category,duration_minutes,title,detail,note,floors_up,floors_down` の 1 行 1 セッション。表計算やスクリプトでの軽い集計用。`date` は `yyyy-MM-dd HH:mm`、`category` は日本語ラベル(読書/トレーニング/勉強)、`detail` はトレーニングの種目名を「・」区切りにしたもの(読書・勉強は空)。`floors_up` / `floors_down` は階段など階数計測の種目を含むトレーニング記録だけ合計値を持ち、それ以外は空欄。値に `,` `"` 改行が含まれる場合は RFC4180 に従いダブルクォートで囲みエスケープする。
 
 #### Obsidian 向け Markdown(日次ノート)
 Vault にコピーするだけで使える、frontmatter 付き日次ファイル群(`2026-08-08.md` のような構成で zip 出力)。記録のない日のファイルは作らない。
@@ -272,7 +275,7 @@ study_minutes: 45
 
 - frontmatter に数値を持たせることで、Obsidian の Dataview 等でも集計可能。
 - メモがない場合は「 — メモ」の部分を出さない。カテゴリの見出しはその日に記録があるものだけ出す。
-- セットは「60kg×10」形式。片手セットは「60kg×10(片手)」、マイナス重量は「-20kg×10」とそのまま出す。有酸素は「3.0km 20分」形式(距離・時間が無ければある方だけ)。
+- セットは「60kg×10」形式。片手セットは「60kg×10(片手)」、マイナス重量は「-20kg×10」とそのまま出す。有酸素は「3.0km 20分」形式(距離・時間が無ければある方だけ)。階数計測(階段)は「上り12階 下り12階 15分」形式。
 - 読書進捗の差分表示(旧仕様の「55% → 62%」)は行わない。`Session` が進捗を持たずデータがないため。
 - Notion 書き出し(v1.1)はこの Markdown をベースに、Notion API でのページ作成に対応する。
 

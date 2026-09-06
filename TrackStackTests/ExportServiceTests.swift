@@ -50,7 +50,7 @@ final class ExportServiceTests: XCTestCase {
         let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
 
         XCTAssertEqual(json["app"] as? String, "hitotsumi")
-        XCTAssertEqual(json["schemaVersion"] as? Int, 4)
+        XCTAssertEqual(json["schemaVersion"] as? Int, 5)
         let sessions = try XCTUnwrap(json["sessions"] as? [[String: Any]])
         XCTAssertEqual(sessions.count, 2)
     }
@@ -119,12 +119,42 @@ final class ExportServiceTests: XCTestCase {
         XCTAssertEqual(sessionJSON["note"] as? String, "第1章まで")
     }
 
+    /// 階段(階数計測)の記録が JSON に floorsUp / floorsDown として出力されることを確認する。
+    func testJSONTrainingSessionIncludesFloorsForStairs() throws {
+        let exercise = Exercise(name: "階段", bodyPart: .cardio, cardioMetric: .floors)
+        context.insert(exercise)
+
+        let training = Session(category: .training, startedAt: Date(), durationMinutes: 15)
+        let log = ExerciseLog(exerciseName: "階段", bodyPart: .cardio, order: 0)
+        log.floorsUp = 12
+        log.floorsDown = 12
+        log.durationMinutes = 15
+        log.session = training
+        training.exerciseLogs = [log]
+        context.insert(training)
+        context.insert(log)
+
+        let data = try ExportService.makeJSON(
+            sessions: [training], books: [], subjects: [], exercises: [exercise],
+            exportedAt: Date()
+        )
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let sessions = try XCTUnwrap(json["sessions"] as? [[String: Any]])
+        let trainingJSON = try XCTUnwrap(sessions.first)
+        let exercises = try XCTUnwrap(trainingJSON["exercises"] as? [[String: Any]])
+        let stairsJSON = try XCTUnwrap(exercises.first)
+
+        XCTAssertEqual(stairsJSON["floorsUp"] as? Int, 12)
+        XCTAssertEqual(stairsJSON["floorsDown"] as? Int, 12)
+        XCTAssertNil(stairsJSON["sets"])
+    }
+
     // MARK: - CSV
 
     func testCSVHeaderRow() {
         let csv = ExportService.makeCSV(sessions: [])
         let firstLine = csv.split(separator: "\n", maxSplits: 1).first.map(String.init)
-        XCTAssertEqual(firstLine, "date,category,duration_minutes,title,detail,note")
+        XCTAssertEqual(firstLine, "date,category,duration_minutes,title,detail,note,floors_up,floors_down")
     }
 
     func testCSVRowCountMatchesSessionCountPlusHeader() {
@@ -267,5 +297,43 @@ final class ExportServiceTests: XCTestCase {
 
         XCTAssertTrue(file.content.contains("- ベンチプレス 60kg×10, 60kg×8"))
         XCTAssertTrue(file.content.contains("- ランニング 3.0km 20分"))
+    }
+
+    func testMarkdownStairsLineFormat() throws {
+        let day1 = jstCalendar.date(from: DateComponents(year: 2026, month: 8, day: 1, hour: 9))!
+        let training = Session(category: .training, startedAt: day1, durationMinutes: 15)
+        training.menuName = "有酸素"
+
+        let stairsLog = ExerciseLog(exerciseName: "階段", bodyPart: .cardio, order: 0)
+        stairsLog.floorsUp = 12
+        stairsLog.floorsDown = 12
+        stairsLog.durationMinutes = 15
+        training.exerciseLogs = [stairsLog]
+
+        let files = ExportService.makeMarkdownFiles(sessions: [training], calendar: jstCalendar)
+        let file = try XCTUnwrap(files.first)
+
+        XCTAssertTrue(file.content.contains("- 階段 上り12階 下り12階 15分"))
+    }
+
+    // MARK: - CSV floors columns
+
+    func testCSVIncludesFloorsColumnsForStairsSession() {
+        let training = Session(category: .training, startedAt: Date(), durationMinutes: 15)
+        let stairsLog = ExerciseLog(exerciseName: "階段", bodyPart: .cardio, order: 0)
+        stairsLog.floorsUp = 12
+        stairsLog.floorsDown = 8
+        training.exerciseLogs = [stairsLog]
+
+        let csv = ExportService.makeCSV(sessions: [training])
+        let rows = csv.split(separator: "\n")
+        XCTAssertTrue(rows.last?.hasSuffix(",12,8") ?? false)
+    }
+
+    func testCSVLeavesFloorsColumnsEmptyForNonStairsSession() {
+        let reading = Session(category: .reading, startedAt: Date(), durationMinutes: 30)
+        let csv = ExportService.makeCSV(sessions: [reading])
+        let rows = csv.split(separator: "\n")
+        XCTAssertTrue(rows.last?.hasSuffix(",,") ?? false)
     }
 }

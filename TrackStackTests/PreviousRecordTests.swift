@@ -82,6 +82,54 @@ final class PreviousRecordTests: XCTestCase {
         log.durationMinutes = 20
         XCTAssertEqual(log.summaryDetail, "3.0km 20分")
     }
+
+    func testSummaryDetailForStairs() {
+        let log = ExerciseLog(exerciseName: "階段", bodyPart: .cardio, order: 0)
+        log.floorsUp = 12
+        log.floorsDown = 12
+        log.durationMinutes = 15
+        XCTAssertEqual(log.summaryDetail, "上り12階 下り12階 15分")
+    }
+
+    // MARK: - prefillWeights
+
+    /// 前回の記録が空(未記録)のときは何も変えない
+    func testPrefillWeightsDoesNothingWhenPreviousIsEmpty() {
+        let sets = [SetRecord(weightKg: 20, reps: 10)]
+        let result = PreviousRecord.prefillWeights(sets, from: [])
+        XCTAssertEqual(result, sets)
+    }
+
+    /// 各セットの重量はインデックス対応で前回の重量に置き換わる。reps は変わらない
+    func testPrefillWeightsMapsByIndex() {
+        let sets = [
+            SetRecord(weightKg: 20, reps: 10),
+            SetRecord(weightKg: 20, reps: 8),
+        ]
+        let previous = [
+            SetRecord(weightKg: 60, reps: 10),
+            SetRecord(weightKg: 55, reps: 8, isSingleArm: true),
+        ]
+        let result = PreviousRecord.prefillWeights(sets, from: previous)
+
+        XCTAssertEqual(result[0].weightKg, 60)
+        XCTAssertEqual(result[0].reps, 10)
+        XCTAssertEqual(result[1].weightKg, 55)
+        XCTAssertEqual(result[1].isSingleArm, true)
+    }
+
+    /// 前回よりセット数が多いときは、はみ出した分に前回最後のセットの重量を使う
+    func testPrefillWeightsUsesLastWeightWhenMoreSetsThanPrevious() {
+        let sets = [
+            SetRecord(weightKg: 20, reps: 10),
+            SetRecord(weightKg: 20, reps: 10),
+            SetRecord(weightKg: 20, reps: 10),
+        ]
+        let previous = [SetRecord(weightKg: 50, reps: 10)]
+        let result = PreviousRecord.prefillWeights(sets, from: previous)
+
+        XCTAssertEqual(result.map(\.weightKg), [50, 50, 50])
+    }
 }
 
 /// 数値入力の先頭ゼロ処理

@@ -18,8 +18,11 @@ struct ExerciseDraftSections: View {
             Section {
                 if draft.bodyPart.isCardio {
                     CardioFieldsView(
+                        cardioMetric: draft.cardioMetric,
                         distanceKm: $draft.distanceKm,
-                        durationMinutes: $draft.durationMinutes
+                        durationMinutes: $draft.durationMinutes,
+                        floorsUp: $draft.floorsUp,
+                        floorsDown: $draft.floorsDown
                     )
                 } else {
                     SetsEditorView(sets: $draft.sets)
@@ -198,19 +201,41 @@ private struct SetRow: View {
     }
 }
 
-/// 有酸素(距離・時間)編集
+/// 有酸素(距離・時間、または階数・時間)編集
 struct CardioFieldsView: View {
+    let cardioMetric: CardioMetric
     @Binding var distanceKm: Double
     @Binding var durationMinutes: Int
+    @Binding var floorsUp: Int
+    @Binding var floorsDown: Int
 
     var body: some View {
-        HStack {
-            Text("距離")
-            Spacer()
-            WeightField(value: $distanceKm, placeholder: "0")
-                .frame(width: 70)
-            Text("km")
-                .foregroundStyle(.secondary)
+        if cardioMetric == .floors {
+            HStack {
+                Text("上り")
+                Spacer()
+                RepsField(value: $floorsUp, placeholder: "0")
+                    .frame(width: 70)
+                Text("階")
+                    .foregroundStyle(.secondary)
+            }
+            HStack {
+                Text("下り")
+                Spacer()
+                RepsField(value: $floorsDown, placeholder: "0")
+                    .frame(width: 70)
+                Text("階")
+                    .foregroundStyle(.secondary)
+            }
+        } else {
+            HStack {
+                Text("距離")
+                Spacer()
+                WeightField(value: $distanceKm, placeholder: "0")
+                    .frame(width: 70)
+                Text("km")
+                    .foregroundStyle(.secondary)
+            }
         }
         HStack {
             Text("時間")

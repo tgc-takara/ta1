@@ -42,12 +42,16 @@ xcodebuild -scheme TrackStack -destination 'platform=iOS Simulator,name=iPhone 1
 - 週の始まり(日曜/月曜/システム)は `Shared/WeekStart.swift` の設定で切り替える。「今週」の集計とカレンダーは `Calendar.current` ではなく `AppCalendar.current` を使う(ホームのグラフは暦週ではなく直近7日なので対象外)
 - 記録タブはリスト/カレンダー/ウィークリーの3表示。ウィークリー(`Features/History/WeeklyReviewView.swift`)は週送りで過去週を振り返るスクショ共有用カード(X/Instagramボタンは `Shared/SNSShareButtons.swift` に共通化、グラフ本体は `DailyStackedChart` としてホームと共用)
 - 集計ロジックは `Shared/StatsCalculator.swift` に純粋関数で分離(ユニットテスト対象)。`sessionsInWeek` は週境界を排他的に扱う(`DateInterval.contains` は終端を含むため使わない)
+- 有酸素種目は距離だけでなく階数(階段の上り/下り)も記録できる。`Exercise.cardioMetric`(`CardioMetric`: distance/floors、`metricRaw` は nil→distance)が種目ごとの記録方式を決め、`ExerciseLog.floorsUp` / `floorsDown` と `MenuItem.defaultFloorsUp` / `defaultFloorsDown` に距離系と排他で保持する。プリセット「階段」は `Exercise.floorsPresetNames` で floors 指定して投入する(setupVersion 5)
+- メニュー適用・種目の単体追加時、筋トレ種目は前回記録の重量を自動でデフォルト入力する(`Shared/PreviousRecord.swift` の `latestSets` / `prefillWeights`)。reps はメニューの雛形のまま変えない
+- ホーム画面ウィジェット(`TrackStackWidget/`、別 target)は App Group `group.com.taguchi.TrackStack` の UserDefaults に置いた `WidgetSnapshot`(今日の合計・内訳・ストリーク)を読むだけ。アプリ側は `App/WidgetSnapshotWriter.swift` が scenePhase の切り替わりで書き込む。ウィジェットからの起動は URL スキーム `hitotsumi://start?category=…` / `hitotsumi://record`(`App/DeepLink.swift`、`DeepLinkRouter` 経由でホームタブへ切替→記録開始)
+- 自動バックアップ(`Export/AutoBackup*.swift`)は「ファイル」アプリで選んだフォルダ(security-scoped bookmark)直下の `ひとつみ/` に JSON と日別 Markdown を書く。無料 Personal Team では iCloud entitlement が使えないためこの方式。アプリが .active になったとき日付が変わっていれば実行し、BGAppRefreshTask(`com.taguchi.TrackStack.autobackup`)でも試行する
 - UI 文言は日本語
 
 ## 開発状況(2026-08-15 時点)
 
 - M6完了・MVP完成。実機運用中
-- MVP後に記事・動画音声カテゴリを一度追加したが、運用してみて記録の手間に見合わないため廃止。エクスポート JSON は `schemaVersion: 4`
+- MVP後に記事・動画音声カテゴリを一度追加したが、運用してみて記録の手間に見合わないため廃止。エクスポート JSON は `schemaVersion: 5`(有酸素「階段」の階数フィールド `floorsUp` / `floorsDown` 追加に伴い 4→5)
   - M3 のタイマーは `Features/Timer/ActiveTimer.swift` に「開始時刻との差分」方式で実装済み(PLANNING.md §5)。状態は UserDefaults(キー `activeTimerState`)に永続化し、アプリ再起動後もダッシュボードの計測中バナーから復元できる
   - M4 の可視化は `StatsCalculator` に `dailyMinutes` / `minutesByDay` / `dominantCategoryByDay` を追加。ダッシュボードに週間積み上げ棒グラフ(`Features/Dashboard/WeeklyChartView.swift`)、履歴タブにリスト/カレンダー切替(`Features/History/CalendarView.swift` の `MonthCalendarView`)を実装
   - M5 のエクスポートは `Export/ExportService.swift` に UI 非依存の純粋関数(`makeJSON` / `makeCSV` / `makeMarkdownFiles`)として実装。設定画面の `Features/Settings/ExportView.swift` から JSON(AI分析用)/ CSV(表計算用)/ Obsidian用 Markdown(zip)の3形式を生成し、`UIActivityViewController` のシェアシートで共有する。zip 化は外部ライブラリを使わず `NSFileCoordinator(.forUploading)` を利用。形式仕様は PLANNING.md §3.5 参照(JSON の `app` は `"hitotsumi"`、種目は8部位の `bodyPart`、`SetRecord` に `isSingleArm` あり、Session に進捗差分は含まれない)

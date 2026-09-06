@@ -34,6 +34,13 @@ struct ExerciseHistoryView: View {
         }
     }
 
+    /// 階数種目の総階数(上り+下りの合計)。
+    private var totalFloors: Int {
+        entries.reduce(0) { sum, entry in
+            sum + (entry.log.floorsUp ?? 0) + (entry.log.floorsDown ?? 0)
+        }
+    }
+
     var body: some View {
         Group {
             if entries.isEmpty {
@@ -63,6 +70,9 @@ struct ExerciseHistoryView: View {
             }
             if !bodyPart.isCardio, totalVolume != 0 {
                 LabeledContent("総ボリューム", value: "\(Self.formatWeight(totalVolume))kg")
+            }
+            if bodyPart.isCardio, totalFloors > 0 {
+                LabeledContent("総階数", value: "\(totalFloors)階")
             }
         } header: {
             Label(bodyPart.label, systemImage: bodyPart.symbolName)

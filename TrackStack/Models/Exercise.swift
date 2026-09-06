@@ -57,6 +57,19 @@ enum BodyPart: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+/// 有酸素種目でどの値を記録するか(距離 or 階数)。
+enum CardioMetric: String, Codable {
+    case distance
+    case floors
+
+    var label: String {
+        switch self {
+        case .distance: "距離"
+        case .floors: "階数"
+        }
+    }
+}
+
 /// 種目マスタ(ベンチプレス、ランニング等)
 @Model
 final class Exercise {
@@ -67,18 +80,26 @@ final class Exercise {
     var createdAt: Date
     /// 種目メモ(フォームやコツなど、任意)
     var memo: String?
+    /// CardioMetric.rawValue。有酸素種目のみ意味を持つ。nil(旧データ)は距離扱い。
+    var metricRaw: String?
 
     var bodyPart: BodyPart {
         get { BodyPart(rawValue: kindRaw) ?? .chest }
         set { kindRaw = newValue.rawValue }
     }
 
-    init(name: String, bodyPart: BodyPart, memo: String? = nil) {
+    var cardioMetric: CardioMetric {
+        get { metricRaw.flatMap(CardioMetric.init(rawValue:)) ?? .distance }
+        set { metricRaw = newValue.rawValue }
+    }
+
+    init(name: String, bodyPart: BodyPart, memo: String? = nil, cardioMetric: CardioMetric = .distance) {
         self.id = UUID()
         self.name = name
         self.kindRaw = bodyPart.rawValue
         self.createdAt = Date()
         self.memo = memo
+        self.metricRaw = cardioMetric.rawValue
     }
 
     /// 起動時に投入するプリセット種目。未登録の名前だけ追加される(既存データは重複しない)。
@@ -195,7 +216,11 @@ final class Exercise {
         ("ランニング", .cardio),
         ("ウォーキング", .cardio),
         ("サイクリング", .cardio),
+        ("階段", .cardio),
     ]
+
+    /// プリセットのうち「距離」ではなく「階数」で記録する有酸素種目名。
+    static let floorsPresetNames: Set<String> = ["階段"]
 
     /// 旧2分類("strength")の記録を部位分類へ移行する。種目名がプリセットにあれば対応部位、なければ胸。
     static func migratedBodyPart(name: String) -> BodyPart {

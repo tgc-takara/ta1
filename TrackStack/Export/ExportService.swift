@@ -45,6 +45,8 @@ enum ExportService {
         var sets: [ExportSetRecord]?
         var distanceKm: Double?
         var durationMinutes: Int?
+        var floorsUp: Int?
+        var floorsDown: Int?
     }
 
     struct ExportSetRecord: Encodable {
@@ -105,7 +107,7 @@ enum ExportService {
     ) throws -> Data {
         let payload = ExportPayload(
             app: "hitotsumi",
-            schemaVersion: 4,
+            schemaVersion: 5,
             exportedAt: exportedAt,
             sessions: sessions.map(exportSession),
             books: books.map(exportBook),
@@ -175,7 +177,9 @@ enum ExportService {
                 ExportSetRecord(weightKg: $0.weightKg, reps: $0.reps, isSingleArm: $0.isSingleArm)
             },
             distanceKm: isCardio ? log.distanceKm : nil,
-            durationMinutes: isCardio ? log.durationMinutes : nil
+            durationMinutes: isCardio ? log.durationMinutes : nil,
+            floorsUp: isCardio ? log.floorsUp : nil,
+            floorsDown: isCardio ? log.floorsDown : nil
         )
     }
 
@@ -212,9 +216,11 @@ enum ExportService {
 
     // MARK: - CSV
 
-    /// "date,category,duration_minutes,title,detail,note" のフラット表。RFC4180 に従いエスケープする。
+    /// "date,category,duration_minutes,title,detail,note,floors_up,floors_down" のフラット表。
+    /// floors_up / floors_down はトレーニングかつ階数種目を含む記録だけ値を持ち、それ以外は空欄にする。
+    /// RFC4180 に従いエスケープする。
     static func makeCSV(sessions: [Session]) -> String {
-        var lines = ["date,category,duration_minutes,title,detail,note"]
+        var lines = ["date,category,duration_minutes,title,detail,note,floors_up,floors_down"]
 
         for session in sessions {
             let date = csvDateFormatter.string(from: session.startedAt)
@@ -222,6 +228,8 @@ enum ExportService {
             let duration = String(session.durationMinutes)
             let title: String
             let detail: String
+            var floorsUpField = ""
+            var floorsDownField = ""
 
             switch session.category {
             case .reading:
@@ -236,10 +244,15 @@ enum ExportService {
                     .sorted { $0.order < $1.order }
                     .map(\.exerciseName)
                     .joined(separator: "・")
+                let floorsLogs = session.exerciseLogs.filter { $0.floorsUp != nil || $0.floorsDown != nil }
+                if !floorsLogs.isEmpty {
+                    floorsUpField = String(floorsLogs.reduce(0) { $0 + ($1.floorsUp ?? 0) })
+                    floorsDownField = String(floorsLogs.reduce(0) { $0 + ($1.floorsDown ?? 0) })
+                }
             }
 
             let note = session.note ?? ""
-            let fields = [date, category, duration, title, detail, note].map(csvField)
+            let fields = [date, category, duration, title, detail, note, floorsUpField, floorsDownField].map(csvField)
             lines.append(fields.joined(separator: ","))
         }
 
@@ -373,10 +386,16 @@ enum ExportService {
         return sets.isEmpty ? log.exerciseName : "\(log.exerciseName) \(sets)"
     }
 
-    /// 「3.0km 20分」形式。距離・時間が無ければある方だけ出す。
+    /// 「3.0km 20分」または「上り12階 下り12階 15分」形式。値が無ければある項目だけ出す。
     private static func cardioLine(_ log: ExerciseLog) -> String {
         var parts: [String] = []
-        if let distance = log.distanceKm {
+        if let up = log.floorsUp, up > 0 {
+            parts.append("上り\(up)階")
+        }
+        if let down = log.floorsDown, down > 0 {
+            parts.append("下り\(down)階")
+        }
+        if parts.isEmpty, let distance = log.distanceKm {
             parts.append(String(format: "%.1fkm", distance))
         }
         if let duration = log.durationMinutes {

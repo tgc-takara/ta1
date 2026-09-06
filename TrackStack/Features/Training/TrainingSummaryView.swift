@@ -66,9 +66,7 @@ struct TrainingSummaryView: View {
                     .font(.subheadline)
                     .foregroundStyle(Theme.inkSecondary)
                 Spacer()
-                Text("ひとつみ")
-                    .font(.caption)
-                    .foregroundStyle(Theme.inkSecondary)
+                BrandMark()
             }
 
             HStack(alignment: .firstTextBaseline, spacing: 8) {

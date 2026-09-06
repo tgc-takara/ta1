@@ -6,12 +6,17 @@ import UIKit
 struct TrackStackApp: App {
     let container: ModelContainer
 
+    /// ウィジェットのディープリンクを画面へ受け渡す入れ物
+    @State private var deepLinkRouter = DeepLinkRouter()
+    @Environment(\.scenePhase) private var scenePhase
+
     /// 起動時のデータ準備(旧データ移行・プリセット投入)を何回目まで済ませたか。
     /// この値を上げたときだけ再実行し、通常の起動では SwiftData に一切触らない。
     /// 2: 新聞→記事 / ポッドキャスト→動画・音声 のカテゴリ統合
     /// 3: 読書/勉強/動画音声のスナップショット埋め戻し
     /// 4: 記事/動画音声カテゴリの廃止に伴う記録の削除
-    private static let setupVersion = 4
+    /// 5: 有酸素プリセット「階段」の追加
+    private static let setupVersion = 5
     private static let setupVersionKey = "startupSetupVersion"
 
     init() {
@@ -23,6 +28,8 @@ struct TrackStackApp: App {
         } catch {
             fatalError("ModelContainer の初期化に失敗: \(error)")
         }
+        // BGTaskScheduler への登録は起動完了前(init)で行う必要がある
+        AutoBackupTrigger.registerBackgroundTask(container: container)
         Self.runSetupIfNeeded(container: container)
         configureNavigationBarAppearance()
     }
@@ -87,8 +94,25 @@ struct TrackStackApp: App {
     var body: some Scene {
         WindowGroup {
             RootTabView()
+                .environment(deepLinkRouter)
+                .onOpenURL { url in
+                    // 解釈できない URL は無視する(pending は上書きしない)
+                    if let link = DeepLink.parse(url) {
+                        deepLinkRouter.pending = link
+                    }
+                }
         }
         .modelContainer(container)
+        // ウィジェット用スナップショットの更新。起動・復帰時と、バックグラウンドへ退くときに書き出す
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active || newPhase == .background {
+                WidgetSnapshotWriter.update(container: container)
+            }
+        }
+        // 自動バックアップ(有効なら .active で当日未実行なら実行、.background で次回をスケジュール)
+        .onChange(of: scenePhase) { _, newPhase in
+            AutoBackupTrigger.handle(phase: newPhase, container: container)
+        }
     }
 
     /// まだ投入したことのないプリセット種目だけを追加する。
@@ -104,7 +128,11 @@ struct TrackStackApp: App {
 
         for (name, bodyPart) in Exercise.presets
         where !seededNames.contains(name) && !existingNames.contains(name) {
-            context.insert(Exercise(name: name, bodyPart: bodyPart))
+            let exercise = Exercise(name: name, bodyPart: bodyPart)
+            if Exercise.floorsPresetNames.contains(name) {
+                exercise.cardioMetric = .floors
+            }
+            context.insert(exercise)
         }
         defaults.set(Array(seededNames.union(Exercise.presets.map(\.0))), forKey: seededKey)
     }
