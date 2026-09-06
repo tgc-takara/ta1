@@ -209,42 +209,43 @@ struct CardioFieldsView: View {
     @Binding var floorsUp: Int
     @Binding var floorsDown: Int
 
+    /// 数値欄はタップ領域として最小 44pt の高さを持つため、フォーム行の標準の上下余白を
+    /// そのまま足すと他の行(カテゴリ・開始日時など)より背が高くなる。上下余白を 0 にして
+    /// 行の高さを 44pt にそろえる(左右は標準の行と同じ 20pt)
+    private static let rowInsets = EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20)
+
     var body: some View {
         if cardioMetric == .floors {
-            HStack {
-                Text("上り")
-                Spacer()
+            row(label: "上り", unit: "階") {
                 RepsField(value: $floorsUp, placeholder: "0")
-                    .frame(width: 70)
-                Text("階")
-                    .foregroundStyle(.secondary)
             }
-            HStack {
-                Text("下り")
-                Spacer()
+            row(label: "下り", unit: "階") {
                 RepsField(value: $floorsDown, placeholder: "0")
-                    .frame(width: 70)
-                Text("階")
-                    .foregroundStyle(.secondary)
             }
         } else {
-            HStack {
-                Text("距離")
-                Spacer()
+            row(label: "距離", unit: "km") {
                 WeightField(value: $distanceKm, placeholder: "0")
-                    .frame(width: 70)
-                Text("km")
-                    .foregroundStyle(.secondary)
             }
         }
-        HStack {
-            Text("時間")
-            Spacer()
+        row(label: "時間", unit: "分") {
             RepsField(value: $durationMinutes, placeholder: "0")
+        }
+    }
+
+    private func row<Field: View>(
+        label: String,
+        unit: String,
+        @ViewBuilder field: () -> Field
+    ) -> some View {
+        HStack {
+            Text(label)
+            Spacer()
+            field()
                 .frame(width: 70)
-            Text("分")
+            Text(unit)
                 .foregroundStyle(.secondary)
         }
+        .listRowInsets(Self.rowInsets)
     }
 }
 
