@@ -3,6 +3,7 @@ import SwiftData
 
 struct DashboardView: View {
     @Environment(DeepLinkRouter.self) private var deepLinkRouter
+    @Environment(\.modelContext) private var modelContext
     @Query(sort: \Session.startedAt, order: .reverse) private var sessions: [Session]
     @State private var showingRecordSheet = false
     @State private var activeTimer = ActiveTimer()
@@ -30,12 +31,27 @@ struct DashboardView: View {
     /// 「記録開始」から始める。トレーニングだけ記録フォーム、他はタイマー画面。
     private func start(_ category: ActivityCategory) {
         if category == .training {
-            trainingStartedAt = Date()
+            let now = Date()
+            trainingStartedAt = now
+            // ウィジェットに「トレーニング計測中」を伝えるフラグ(フォームを閉じたら消す)
+            LiveTrainingState.begin(at: now)
             showingTrainingSheet = true
         } else {
             activeTimer.start(category: category)
             showingTimerSheet = true
         }
+        refreshWidget()
+    }
+
+    /// 進行中の状態が変わったらウィジェットのスナップショットを書き直す。
+    private func refreshWidget() {
+        WidgetSnapshotWriter.update(container: modelContext.container)
+    }
+
+    /// トレーニングの記録フォームが閉じたとき(終了・キャンセル・スワイプのいずれでも)の後始末。
+    private func endLiveTraining() {
+        LiveTrainingState.clear()
+        refreshWidget()
     }
 
     /// ウィジェットから渡されたディープリンクを1件だけ処理して消す。
@@ -45,7 +61,14 @@ struct DashboardView: View {
         deepLinkRouter.pending = nil
         switch pending {
         case .start(let category):
-            start(category)
+            // すでに計測中なら二重に始めず、その画面を出すだけにする
+            if activeTimer.isRunning {
+                if !showingTimerSheet { showingTimerSheet = true }
+            } else if LiveTrainingState.startedAt != nil {
+                if !showingTrainingSheet { showingTrainingSheet = true }
+            } else {
+                start(category)
+            }
         case .record:
             showingRecordSheet = true
         }
@@ -129,7 +152,7 @@ struct DashboardView: View {
             .sheet(isPresented: $showingRecordSheet) {
                 SessionFormView()
             }
-            .sheet(isPresented: $showingTrainingSheet) {
+            .sheet(isPresented: $showingTrainingSheet, onDismiss: endLiveTraining) {
                 // トレーニングは計測しながら内容を書き込む運用なので、
                 // タイマー画面ではなく記録フォームを開き、終了時に経過時間を実施時間にする
                 SessionFormView(
@@ -147,7 +170,8 @@ struct DashboardView: View {
             .sheet(item: $editingSession) { session in
                 SessionFormView(sessionToEdit: session)
             }
-            .fullScreenCover(isPresented: $showingTimerSheet) {
+            // 終了・破棄のどちらで閉じてもここを通るので、計測中表示の後始末をまとめる
+            .fullScreenCover(isPresented: $showingTimerSheet, onDismiss: refreshWidget) {
                 TimerView(activeTimer: activeTimer) { category, startedAt, durationMinutes in
                     pendingTimerResult = PendingTimerResult(
                         category: category,

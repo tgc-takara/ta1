@@ -30,6 +30,8 @@ struct TrackStackApp: App {
         }
         // BGTaskScheduler への登録は起動完了前(init)で行う必要がある
         AutoBackupTrigger.registerBackgroundTask(container: container)
+        // ライブ記録フォームは再起動で復元できないため、残っていた開始時刻は捨てる
+        LiveTrainingState.clearStale()
         Self.runSetupIfNeeded(container: container)
         configureNavigationBarAppearance()
     }
@@ -101,10 +103,15 @@ struct TrackStackApp: App {
                         deepLinkRouter.pending = link
                     }
                 }
+                // 起動直後(scenePhase の onChange は初期値では発火しない)にも取り込む
+                .onAppear { consumeWidgetIntentLink() }
         }
         .modelContainer(container)
         // ウィジェット用スナップショットの更新。起動・復帰時と、バックグラウンドへ退くときに書き出す
         .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                consumeWidgetIntentLink()
+            }
             if newPhase == .active || newPhase == .background {
                 WidgetSnapshotWriter.update(container: container)
             }
@@ -113,6 +120,15 @@ struct TrackStackApp: App {
         .onChange(of: scenePhase) { _, newPhase in
             AutoBackupTrigger.handle(phase: newPhase, container: container)
         }
+    }
+
+    /// ウィジェットの Button(intent:) が App Group に置いたディープリンクを取り込む。
+    /// perform() がウィジェット拡張のプロセスで走っても届くように、URL ではなく
+    /// UserDefaults を経由し、ここで既存の onOpenURL 経路と合流させる。
+    private func consumeWidgetIntentLink() {
+        guard let url = StartRecordingIntent.takePendingDeepLink(),
+              let link = DeepLink.parse(url) else { return }
+        deepLinkRouter.pending = link
     }
 
     /// まだ投入したことのないプリセット種目だけを追加する。

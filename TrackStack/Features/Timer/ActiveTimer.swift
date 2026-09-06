@@ -47,7 +47,8 @@ struct ActiveTimerState: Codable {
 /// SwiftUI から直接参照できるようにし、状態はすべて UserDefaults へ即時保存する。
 @Observable
 final class ActiveTimer {
-    private static let userDefaultsKey = "activeTimerState"
+    /// 永続化キー。ウィジェット用スナップショットの書き出し(WidgetSnapshotWriter)からも参照する
+    static let userDefaultsKey = "activeTimerState"
 
     private(set) var state: ActiveTimerState?
 
@@ -55,12 +56,14 @@ final class ActiveTimer {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        if let data = defaults.data(forKey: Self.userDefaultsKey),
-           let decoded = try? JSONDecoder().decode(ActiveTimerState.self, from: data) {
-            self.state = decoded
-        } else {
-            self.state = nil
-        }
+        self.state = Self.loadState(from: defaults)
+    }
+
+    /// 永続化された計測状態を読み出す。復元(init)と、ウィジェット用スナップショットの
+    /// 書き出しの両方から使うため static にしている。
+    static func loadState(from defaults: UserDefaults = .standard) -> ActiveTimerState? {
+        guard let data = defaults.data(forKey: userDefaultsKey) else { return nil }
+        return try? JSONDecoder().decode(ActiveTimerState.self, from: data)
     }
 
     var isRunning: Bool { state != nil }

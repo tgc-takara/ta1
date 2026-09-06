@@ -59,6 +59,7 @@ targets:
       - path: TrackStack/Shared/Theme.swift
       - path: TrackStack/Shared/Formatters.swift
       - path: TrackStack/Shared/WidgetSnapshot.swift
+      - path: TrackStack/Shared/StartRecordingIntent.swift
     info:
       path: TrackStackWidget/Info.plist
       properties:

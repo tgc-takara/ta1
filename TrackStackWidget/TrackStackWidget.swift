@@ -8,6 +8,22 @@ struct HitotsumiEntry: TimelineEntry {
     let totalMinutes: Int
     let minutesByCategory: [ActivityCategory: Int]
     let streak: Int
+    /// いま計測中の記録(あれば)
+    let active: ActiveRecording?
+
+    init(
+        date: Date,
+        totalMinutes: Int,
+        minutesByCategory: [ActivityCategory: Int],
+        streak: Int,
+        active: ActiveRecording? = nil
+    ) {
+        self.date = date
+        self.totalMinutes = totalMinutes
+        self.minutesByCategory = minutesByCategory
+        self.streak = streak
+        self.active = active
+    }
 
     /// プレースホルダ(初回配置時・ギャラリー表示用)のダミー値
     static let placeholder = HitotsumiEntry(
@@ -24,6 +40,15 @@ struct HitotsumiEntry: TimelineEntry {
         streak: 0
     )
 
+    /// 計測中の見え方を確認するためのプレビュー用
+    static let running = HitotsumiEntry(
+        date: Date(),
+        totalMinutes: 75,
+        minutesByCategory: [.reading: 30, .training: 20, .study: 25],
+        streak: 5,
+        active: .sample
+    )
+
     /// App Group のスナップショットからエントリを作る。
     /// スナップショットが今日のものでなければ日付が変わったということなので 0 表示にする。
     /// ストリークだけは「昨日までの連続」も今日いっぱいは有効なので、前日分なら引き継ぐ。
@@ -35,6 +60,7 @@ struct HitotsumiEntry: TimelineEntry {
         guard let snapshot else {
             return HitotsumiEntry(date: now, totalMinutes: 0, minutesByCategory: [:], streak: 0)
         }
+        let active = ActiveRecording.make(from: snapshot)
         let byCategory = snapshot.minutesByCategory.reduce(into: [ActivityCategory: Int]()) { result, pair in
             guard let category = ActivityCategory(rawValue: pair.key) else { return }
             result[category] = pair.value
@@ -44,7 +70,8 @@ struct HitotsumiEntry: TimelineEntry {
                 date: now,
                 totalMinutes: snapshot.totalMinutes,
                 minutesByCategory: byCategory,
-                streak: snapshot.streak
+                streak: snapshot.streak,
+                active: active
             )
         }
         let yesterday = calendar.date(byAdding: .day, value: -1, to: calendar.startOfDay(for: now))
@@ -53,7 +80,8 @@ struct HitotsumiEntry: TimelineEntry {
             date: now,
             totalMinutes: 0,
             minutesByCategory: [:],
-            streak: streakStillValid ? snapshot.streak : 0
+            streak: streakStillValid ? snapshot.streak : 0,
+            active: active
         )
     }
 }
@@ -142,6 +170,20 @@ private struct SummaryColumn: View {
                     .minimumScaleFactor(0.7)
                 }
             }
+
+            if let active = entry.active {
+                HStack(spacing: 3) {
+                    Image(systemName: active.category.symbolName)
+                    Text("計測中: \(active.category.label)")
+                    Text(active.startedAt, style: .timer)
+                        .monospacedDigit()
+                    Spacer(minLength: 0)
+                }
+                .font(.caption2)
+                .foregroundStyle(active.category.color)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
@@ -149,24 +191,18 @@ private struct SummaryColumn: View {
 
 /// medium の右半分。カテゴリごとの「開始」ボタン。
 private struct StartButtonsColumn: View {
+    let active: ActiveRecording?
+
     var body: some View {
         VStack(spacing: 6) {
             ForEach(ActivityCategory.allCases) { category in
                 Link(destination: DeepLinkURL.start(category)) {
-                    HStack(spacing: 5) {
-                        Image(systemName: category.symbolName)
-                            .font(.caption)
-                        Text("\(category.label)を開始")
-                            .font(.caption)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                        Spacer(minLength: 0)
-                    }
-                    .foregroundStyle(category.color)
-                    .padding(.horizontal, 8)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-                    .background(category.color.opacity(0.14))
-                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    StartButtonLabel(
+                        category: category,
+                        active: active,
+                        showsStartSuffix: true,
+                        cornerRadius: 10
+                    )
                 }
             }
         }
@@ -192,7 +228,7 @@ struct HitotsumiWidgetView: View {
             if family == .systemMedium {
                 HStack(spacing: 12) {
                     SummaryColumn(entry: entry, totalFontSize: 26)
-                    StartButtonsColumn()
+                    StartButtonsColumn(active: entry.active)
                         .frame(width: 132)
                 }
             } else {
@@ -224,6 +260,7 @@ struct HitotsumiWidget: Widget {
 struct TrackStackWidgetBundle: WidgetBundle {
     var body: some Widget {
         HitotsumiWidget()
+        HitotsumiStartWidget()
     }
 }
 
@@ -233,6 +270,7 @@ struct TrackStackWidgetBundle: WidgetBundle {
     HitotsumiWidget()
 } timeline: {
     HitotsumiEntry.placeholder
+    HitotsumiEntry.running
     HitotsumiEntry.empty
 }
 
@@ -240,5 +278,6 @@ struct TrackStackWidgetBundle: WidgetBundle {
     HitotsumiWidget()
 } timeline: {
     HitotsumiEntry.placeholder
+    HitotsumiEntry.running
     HitotsumiEntry.empty
 }
